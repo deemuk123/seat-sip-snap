@@ -31,6 +31,7 @@ export interface Order {
   items: CartItem[];
   deliveryMode: "seat" | "counter";
   seatNumber?: string;
+  phone: string;
   status: "received" | "preparing" | "out-for-delivery" | "delivered" | "cancelled";
   total: number;
   createdAt: string;
