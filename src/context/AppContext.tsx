@@ -8,6 +8,7 @@ interface AppState {
   cart: CartItem[];
   currentOrder: Order | null;
   phone: string;
+  orderHistory: Order[];
 }
 
 interface AppContextType extends AppState {
@@ -23,6 +24,8 @@ interface AppContextType extends AppState {
   cartCount: number;
   placeOrder: () => Order;
   resetOrder: () => void;
+  lookupOrdersByPhone: (phone: string) => Order[];
+  setCurrentOrder: (order: Order) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -41,6 +44,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     cart: [],
     currentOrder: null,
     phone: "",
+    orderHistory: [],
   });
 
   const selectShow = useCallback((show: Show) => {
@@ -104,24 +108,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       items: [...state.cart],
       deliveryMode: state.deliveryMode!,
       seatNumber: state.seatNumber || undefined,
+      phone: state.phone,
       status: "received",
       total: state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
       createdAt: new Date().toISOString(),
       estimatedDelivery: "8-12 mins",
     };
-    setState((s) => ({ ...s, currentOrder: order, cart: [] }));
+    setState((s) => ({ ...s, currentOrder: order, cart: [], orderHistory: [...s.orderHistory, order] }));
     return order;
   }, [state]);
 
+  const lookupOrdersByPhone = useCallback((phone: string): Order[] => {
+    return state.orderHistory.filter((o) => o.phone === phone);
+  }, [state.orderHistory]);
+
+  const setCurrentOrder = useCallback((order: Order) => {
+    setState((s) => ({ ...s, currentOrder: order }));
+  }, []);
+
   const resetOrder = useCallback(() => {
-    setState({
+    setState((s) => ({
+      ...s,
       selectedShow: null,
       deliveryMode: null,
       seatNumber: "",
       cart: [],
       currentOrder: null,
       phone: "",
-    });
+    }));
   }, []);
 
   return (
@@ -140,6 +154,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cartCount,
         placeOrder,
         resetOrder,
+        lookupOrdersByPhone,
+        setCurrentOrder,
       }}
     >
       {children}
