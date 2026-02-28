@@ -1,20 +1,23 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, BarChart3 } from "lucide-react";
+import { ArrowLeft, BarChart3, Settings, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
+import SystemSettings from "@/components/admin/SystemSettings";
 
 const AdminPortal = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <button onClick={() => navigate("/staff/dashboard")} className="flex items-center gap-1.5 text-muted-foreground mb-6">
+    <div className="min-h-screen bg-background px-4 py-6">
+      <div className="max-w-3xl mx-auto">
+        <button onClick={() => navigate("/staff/dashboard")} className="flex items-center gap-1.5 text-muted-foreground mb-4">
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm">Back to Dashboard</span>
         </button>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-lg cinema-gradient-primary flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-primary-foreground" />
             </div>
@@ -24,11 +27,24 @@ const AdminPortal = () => {
             </div>
           </div>
 
-          <div className="rounded-xl bg-card border border-border p-8 text-center">
-            <p className="text-muted-foreground text-sm">
-              Admin features will be built in Phase 4 — performance dashboards, system controls, and settings.
-            </p>
-          </div>
+          <Tabs defaultValue="analytics" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="analytics" className="flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4" /> Analytics
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-1.5">
+                <Settings className="w-4 h-4" /> Settings
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="analytics">
+              <AnalyticsDashboard />
+            </TabsContent>
+
+            <TabsContent value="settings">
+              <SystemSettings />
+            </TabsContent>
+          </Tabs>
         </motion.div>
       </div>
     </div>
