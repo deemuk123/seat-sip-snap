@@ -2,8 +2,10 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Minus, Plus, Trash2, Armchair, Store } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { insertOrder } from "@/lib/supabase-orders";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -15,19 +17,62 @@ const Checkout = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [simulatedOtp, setSimulatedOtp] = useState<string | null>(null);
 
-  const handleSendOtp = () => {
-    if (phoneInput.length < 10) return;
-    setPhone(phoneInput);
-    setOtpSent(true);
-  };
+  // Cooldown timer
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const handleSendOtp = useCallback(async () => {
+    if (phoneInput.length < 10 || sendingOtp) return;
+    setSendingOtp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: { phone: phoneInput },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setPhone(phoneInput);
+      setOtpSent(true);
+      setCooldown(30);
+
+      // In simulated mode, show the OTP
+      if (data?.otp) {
+        setSimulatedOtp(data.otp);
+        toast.info(`Your OTP is: ${data.otp}`, { duration: 10000 });
+      } else {
+        toast.success("OTP sent to your phone");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send OTP");
+    }
+    setSendingOtp(false);
+  }, [phoneInput, sendingOtp, setPhone]);
 
   const handleVerifyAndOrder = async () => {
-    if (otp.length < 4) return;
+    if (otp.length < 6) return;
     setVerifying(true);
     try {
-      // Simulate OTP verification delay
-      await new Promise((r) => setTimeout(r, 1000));
+      // Verify OTP
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { phone: phoneInput, otp },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (!data?.verified) {
+        toast.error("OTP verification failed");
+        setVerifying(false);
+        return;
+      }
+
+      // Place order
       const order = await insertOrder({
         show: selectedShow!,
         items: [...cart],
@@ -39,8 +84,8 @@ const Checkout = () => {
       setCurrentOrder(order);
       clearCart();
       navigate("/confirmation");
-    } catch (err) {
-      console.error("Order failed:", err);
+    } catch (err: any) {
+      toast.error(err.message || "Order failed");
       setVerifying(false);
     }
   };
@@ -111,13 +156,27 @@ const Checkout = () => {
             <label className="text-sm font-medium text-foreground mb-2 block">Mobile Number</label>
             <div className="flex gap-3">
               <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Enter 10-digit number" className="flex-1 rounded-lg bg-card border border-border px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-              <button onClick={handleSendOtp} disabled={phoneInput.length < 10} className="shrink-0 rounded-lg cinema-gradient-primary px-5 py-3 text-primary-foreground font-semibold text-sm disabled:opacity-40">Send OTP</button>
+              <button onClick={handleSendOtp} disabled={phoneInput.length < 10 || sendingOtp} className="shrink-0 rounded-lg cinema-gradient-primary px-5 py-3 text-primary-foreground font-semibold text-sm disabled:opacity-40">
+                {sendingOtp ? "Sending…" : "Send OTP"}
+              </button>
             </div>
           </div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <label className="text-sm font-medium text-foreground mb-2 block">Enter OTP sent to +91 {phoneInput}</label>
-            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter OTP" className="w-full rounded-lg bg-card border border-border px-4 py-3 text-foreground text-center text-2xl tracking-[0.5em] font-mono placeholder:text-muted-foreground placeholder:text-base placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary" maxLength={6} />
+            {simulatedOtp && (
+              <p className="text-xs text-primary mb-2 font-mono bg-primary/10 rounded-lg px-3 py-1.5 inline-block">
+                Demo OTP: {simulatedOtp}
+              </p>
+            )}
+            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit OTP" className="w-full rounded-lg bg-card border border-border px-4 py-3 text-foreground text-center text-2xl tracking-[0.5em] font-mono placeholder:text-muted-foreground placeholder:text-base placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary" maxLength={6} />
+            <button
+              onClick={handleSendOtp}
+              disabled={cooldown > 0 || sendingOtp}
+              className="mt-2 text-xs text-primary disabled:text-muted-foreground"
+            >
+              {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
+            </button>
           </motion.div>
         )}
       </div>
@@ -125,7 +184,7 @@ const Checkout = () => {
       {/* Place Order */}
       {otpSent && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="fixed bottom-0 left-0 right-0 p-4 glass-surface border-t border-border">
-          <button onClick={handleVerifyAndOrder} disabled={otp.length < 4 || verifying} className="w-full rounded-xl cinema-gradient-primary py-4 text-primary-foreground font-display font-semibold text-lg disabled:opacity-40 active:scale-[0.98] transition-all">
+          <button onClick={handleVerifyAndOrder} disabled={otp.length < 6 || verifying} className="w-full rounded-xl cinema-gradient-primary py-4 text-primary-foreground font-display font-semibold text-lg disabled:opacity-40 active:scale-[0.98] transition-all">
             {verifying ? "Placing Order..." : `Place Order · ₹${cartTotal}`}
           </button>
         </motion.div>

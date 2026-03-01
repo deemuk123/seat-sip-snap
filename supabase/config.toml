@@ -1,1 +1,13 @@
 project_id = "puikkcvxnrjvgsbgldhx"
+
+[functions.create-staff-user]
+verify_jwt = false
+
+[functions.sync-shows]
+verify_jwt = false
+
+[functions.send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
