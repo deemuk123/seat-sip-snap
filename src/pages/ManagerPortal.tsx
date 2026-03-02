@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, LayoutDashboard, ClipboardList, UtensilsCrossed, RefreshCw } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ClipboardList, UtensilsCrossed, RefreshCw, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import OrderCard from "@/components/manager/OrderCard";
 import VerifyDeliverDialog from "@/components/manager/VerifyDeliverDialog";
 import CancelOrderDialog from "@/components/manager/CancelOrderDialog";
 import MenuManager from "@/components/manager/MenuManager";
+import SLATracker from "@/components/manager/SLATracker";
 import { toast } from "sonner";
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -117,9 +118,12 @@ const ManagerPortal = () => {
           </div>
 
           <Tabs defaultValue="orders" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="orders" className="flex items-center gap-1.5">
                 <ClipboardList className="w-4 h-4" /> Orders
+              </TabsTrigger>
+              <TabsTrigger value="sla" className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4" /> SLA
               </TabsTrigger>
               <TabsTrigger value="menu" className="flex items-center gap-1.5">
                 <UtensilsCrossed className="w-4 h-4" /> Menu
@@ -172,6 +176,10 @@ const ManagerPortal = () => {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="sla">
+              <SLATracker />
             </TabsContent>
 
             <TabsContent value="menu">
