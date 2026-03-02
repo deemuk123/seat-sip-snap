@@ -6,6 +6,10 @@ import { useState, useEffect, useCallback } from "react";
 import { insertOrder } from "@/lib/supabase-orders";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import UpsellSuggestions from "@/components/checkout/UpsellSuggestions";
+import CouponInput from "@/components/checkout/CouponInput";
+import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
+import RepeatOrderButton from "@/components/checkout/RepeatOrderButton";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -20,6 +24,12 @@ const Checkout = () => {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [simulatedOtp, setSimulatedOtp] = useState<string | null>(null);
+
+  // Coupon state
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [discount, setDiscount] = useState(0);
+
+  const finalTotal = Math.max(0, cartTotal - discount);
 
   // Cooldown timer
   useEffect(() => {
@@ -42,7 +52,6 @@ const Checkout = () => {
       setOtpSent(true);
       setCooldown(30);
 
-      // In simulated mode, show the OTP
       if (data?.otp) {
         setSimulatedOtp(data.otp);
         toast.info(`Your OTP is: ${data.otp}`, { duration: 10000 });
@@ -72,6 +81,21 @@ const Checkout = () => {
         return;
       }
 
+      // Fraud check
+      const { data: fraudData } = await supabase.functions.invoke("check-fraud", {
+        body: {
+          phone: phoneInput,
+          show_id: selectedShow?.id,
+          seat_number: seatNumber || null,
+        },
+      });
+
+      if (fraudData && !fraudData.allowed) {
+        toast.error(fraudData.reason || "Order not allowed");
+        setVerifying(false);
+        return;
+      }
+
       // Place order
       const order = await insertOrder({
         show: selectedShow!,
@@ -79,7 +103,7 @@ const Checkout = () => {
         deliveryMode: deliveryMode!,
         seatNumber: seatNumber || undefined,
         phone: phoneInput,
-        total: cartTotal,
+        total: finalTotal,
       });
       setCurrentOrder(order);
       clearCart();
@@ -104,6 +128,9 @@ const Checkout = () => {
 
       <h1 className="text-2xl font-bold font-display text-foreground mb-6">Checkout</h1>
 
+      {/* Interval Boost Banner */}
+      <IntervalBoostBanner />
+
       {/* Show + Delivery Info */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">
         {selectedShow && (
@@ -117,6 +144,9 @@ const Checkout = () => {
           )}
         </div>
       </div>
+
+      {/* AI Upsell Suggestions */}
+      <UpsellSuggestions />
 
       {/* Cart Items */}
       <div className="space-y-3 mb-6">
@@ -139,13 +169,28 @@ const Checkout = () => {
         ))}
       </div>
 
+      {/* Coupon */}
+      <CouponInput
+        subtotal={cartTotal}
+        showId={selectedShow?.id}
+        onApply={(d, c) => { setDiscount(d); setAppliedCoupon(c); }}
+        onRemove={() => { setDiscount(0); setAppliedCoupon(null); }}
+        appliedCode={appliedCoupon}
+        discount={discount}
+      />
+
       {/* Total */}
       <div className="rounded-xl bg-secondary p-4 mb-6">
-        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+        <div className="flex justify-between text-sm text-muted-foreground mb-1">
           <span>Subtotal</span><span>₹{cartTotal}</span>
         </div>
+        {discount > 0 && (
+          <div className="flex justify-between text-sm text-primary mb-1">
+            <span>Discount ({appliedCoupon})</span><span>-₹{discount}</span>
+          </div>
+        )}
         <div className="flex justify-between text-lg font-bold font-display text-foreground border-t border-border pt-2">
-          <span>Total</span><span className="text-primary">₹{cartTotal}</span>
+          <span>Total</span><span className="text-primary">₹{finalTotal}</span>
         </div>
       </div>
 
@@ -153,7 +198,10 @@ const Checkout = () => {
       <div className="space-y-4">
         {!otpSent ? (
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Mobile Number</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-foreground">Mobile Number</label>
+              <RepeatOrderButton phone={phoneInput} />
+            </div>
             <div className="flex gap-3">
               <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Enter 10-digit number" className="flex-1 rounded-lg bg-card border border-border px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
               <button onClick={handleSendOtp} disabled={phoneInput.length < 10 || sendingOtp} className="shrink-0 rounded-lg cinema-gradient-primary px-5 py-3 text-primary-foreground font-semibold text-sm disabled:opacity-40">
@@ -185,7 +233,7 @@ const Checkout = () => {
       {otpSent && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="fixed bottom-0 left-0 right-0 p-4 glass-surface border-t border-border">
           <button onClick={handleVerifyAndOrder} disabled={otp.length < 6 || verifying} className="w-full rounded-xl cinema-gradient-primary py-4 text-primary-foreground font-display font-semibold text-lg disabled:opacity-40 active:scale-[0.98] transition-all">
-            {verifying ? "Placing Order..." : `Place Order · ₹${cartTotal}`}
+            {verifying ? "Placing Order..." : `Place Order · ₹${finalTotal}`}
           </button>
         </motion.div>
       )}

@@ -11,3 +11,12 @@ verify_jwt = false
 
 [functions.verify-otp]
 verify_jwt = false
+
+[functions.ai-upsell]
+verify_jwt = false
+
+[functions.validate-coupon]
+verify_jwt = false
+
+[functions.check-fraud]
+verify_jwt = false
