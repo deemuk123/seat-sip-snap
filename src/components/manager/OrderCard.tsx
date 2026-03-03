@@ -13,10 +13,7 @@ const statusConfig: Record<OrderStatus, { label: string; className: string }> = 
   cancelled: { label: "Cancelled", className: "bg-red-500/20 text-red-400 border-red-500/30" },
 };
 
-const nextStatusMap: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
-  received: { status: "preparing", label: "Start Preparing" },
-  preparing: { status: "out-for-delivery", label: "Out for Delivery" },
-};
+// No intermediate transitions – only Verify & Deliver or Cancel
 
 interface OrderCardProps {
   order: DBOrder;
@@ -29,7 +26,6 @@ export default function OrderCard({ order, onStatusChange, onVerifyDeliver, onCa
   const [expanded, setExpanded] = useState(false);
   const show = order.show_snapshot as any;
   const config = statusConfig[order.status];
-  const next = nextStatusMap[order.status];
   const isTerminal = order.status === "delivered" || order.status === "cancelled";
   const timeAgo = getTimeAgo(order.created_at);
 
@@ -87,16 +83,9 @@ export default function OrderCard({ order, onStatusChange, onVerifyDeliver, onCa
       {/* Actions */}
       {!isTerminal && (
         <div className="flex gap-2 pt-1">
-          {next && (
-            <Button size="sm" onClick={() => onStatusChange(order.id, next.status)} className="flex-1">
-              {next.label}
-            </Button>
-          )}
-          {order.status === "out-for-delivery" && (
-            <Button size="sm" onClick={() => onVerifyDeliver(order.id)} className="flex-1">
-              Verify & Deliver
-            </Button>
-          )}
+          <Button size="sm" onClick={() => onVerifyDeliver(order.id)} className="flex-1">
+            Verify & Deliver
+          </Button>
           <Button size="sm" variant="destructive" onClick={() => onCancel(order.id)}>
             Cancel
           </Button>
