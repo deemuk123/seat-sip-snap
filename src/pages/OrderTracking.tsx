@@ -1,14 +1,12 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Package, ChefHat, Bike, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Package, CheckCircle2, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const statusSteps = [
-  { key: "received", label: "Order Received", icon: Package, description: "Your order has been confirmed" },
-  { key: "preparing", label: "Preparing", icon: ChefHat, description: "Your food is being prepared" },
-  { key: "out-for-delivery", label: "Out for Delivery", icon: Bike, description: "On the way to you" },
+  { key: "received", label: "Order Received", icon: Package, description: "Your order has been confirmed and is being prepared" },
   { key: "delivered", label: "Delivered", icon: CheckCircle2, description: "Enjoy your meal!" },
 ] as const;
 
