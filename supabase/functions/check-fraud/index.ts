@@ -6,8 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_ORDERS_PER_PHONE_PER_SHOW = 3;
-const MAX_ORDERS_PER_SEAT_PER_SHOW = 2;
+const DEFAULT_MAX_PHONE = 3;
+const DEFAULT_MAX_SEAT = 2;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -29,6 +29,22 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Read configurable limits from settings
+    let maxPhone = DEFAULT_MAX_PHONE;
+    let maxSeat = DEFAULT_MAX_SEAT;
+    try {
+      const { data } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "system_config")
+        .maybeSingle();
+      if (data?.value) {
+        const cfg = data.value as Record<string, unknown>;
+        if (typeof cfg.max_orders_per_phone_per_show === "number") maxPhone = cfg.max_orders_per_phone_per_show;
+        if (typeof cfg.max_orders_per_seat_per_show === "number") maxSeat = cfg.max_orders_per_seat_per_show;
+      }
+    } catch { /* use defaults */ }
+
     // Check orders per phone per show
     const { count: phoneCount } = await supabase
       .from("orders")
@@ -37,11 +53,11 @@ Deno.serve(async (req) => {
       .eq("show_id", show_id)
       .neq("status", "cancelled");
 
-    if ((phoneCount || 0) >= MAX_ORDERS_PER_PHONE_PER_SHOW) {
+    if ((phoneCount || 0) >= maxPhone) {
       return new Response(
         JSON.stringify({
           allowed: false,
-          reason: `Maximum ${MAX_ORDERS_PER_PHONE_PER_SHOW} orders per show for this phone number`,
+          reason: `Maximum ${maxPhone} orders per show for this phone number`,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -56,11 +72,11 @@ Deno.serve(async (req) => {
         .eq("show_id", show_id)
         .neq("status", "cancelled");
 
-      if ((seatCount || 0) >= MAX_ORDERS_PER_SEAT_PER_SHOW) {
+      if ((seatCount || 0) >= maxSeat) {
         return new Response(
           JSON.stringify({
             allowed: false,
-            reason: `Maximum ${MAX_ORDERS_PER_SEAT_PER_SHOW} orders per seat for this show`,
+            reason: `Maximum ${maxSeat} orders per seat for this show`,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

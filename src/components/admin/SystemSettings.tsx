@@ -16,6 +16,8 @@ interface SystemConfig {
   estimated_delivery_min: number;
   estimated_delivery_max: number;
   ordering_window_before_mins: number;
+  max_orders_per_phone_per_show: number;
+  max_orders_per_seat_per_show: number;
 }
 
 const DEFAULT_CONFIG: SystemConfig = {
@@ -25,6 +27,8 @@ const DEFAULT_CONFIG: SystemConfig = {
   estimated_delivery_min: 8,
   estimated_delivery_max: 12,
   ordering_window_before_mins: 30,
+  max_orders_per_phone_per_show: 3,
+  max_orders_per_seat_per_show: 2,
 };
 
 interface ApiSettings {
@@ -212,6 +216,21 @@ export default function SystemSettings() {
           <div>
             <Label className="text-xs">Service Charge (₹)</Label>
             <Input type="number" value={config.service_charge} onChange={e => update("service_charge", Number(e.target.value))} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Fraud Prevention */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Fraud Prevention</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Max orders per phone/show</Label>
+            <Input type="number" value={config.max_orders_per_phone_per_show} onChange={e => update("max_orders_per_phone_per_show", Number(e.target.value))} />
+          </div>
+          <div>
+            <Label className="text-xs">Max orders per seat/show</Label>
+            <Input type="number" value={config.max_orders_per_seat_per_show} onChange={e => update("max_orders_per_seat_per_show", Number(e.target.value))} />
           </div>
         </CardContent>
       </Card>
