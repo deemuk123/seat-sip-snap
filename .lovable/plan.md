@@ -1,35 +1,30 @@
 
 
-# All Phases Complete ✅
+# Make Fraud Prevention Limits Configurable from Admin Panel
 
-## Overview
-All 8 phases of the SeatServe cinema food ordering app have been implemented.
+## Current State
+The fraud limits are **hardcoded** in the `check-fraud` edge function:
+- Max 3 orders per phone per show
+- Max 2 orders per seat per show
 
----
+Both limits are **show-wise** (per show), which is correct. But they cannot be changed without editing code.
 
-## Completed Phases
+## Plan
 
-| Phase | Description | Status |
-|-------|------------|--------|
-| **Phase 1-5** | Foundation, Auth, Portals, Backend | ✅ Complete |
-| **Phase 6** | API Integrations (Show API + SMS OTP) | ✅ Complete |
-| **Phase 7** | Advanced Features (upsell, coupons, boost, repeat, SLA, fraud) | ✅ Complete |
-| **Phase 8** | PWA + Performance | ✅ Complete |
+### 1. Add fraud limit fields to SystemSettings UI
+Add a new "Fraud Prevention" card in `SystemSettings.tsx` with two number inputs:
+- **Max orders per phone per show** (default: 3)
+- **Max orders per seat per show** (default: 2)
 
----
+These get saved as part of the existing `system_config` setting in the `settings` table (no database migration needed).
 
-## Phase 8 — What was implemented
+### 2. Update check-fraud edge function
+Instead of using hardcoded constants, the function will:
+- Read the `system_config` key from the `settings` table
+- Extract `max_orders_per_phone_per_show` and `max_orders_per_seat_per_show`
+- Fall back to the current defaults (3 and 2) if not configured
 
-### PWA Setup
-- `vite-plugin-pwa` with auto-update service worker
-- Web app manifest with app name, icons, theme color
-- Apple mobile web app meta tags
-- PWA icons (192px & 512px)
-- Workbox runtime caching for API calls
-- `navigateFallbackDenylist` for `/~oauth`
+### Files modified
+- `src/components/admin/SystemSettings.tsx` — add Fraud Prevention card with two inputs
+- `supabase/functions/check-fraud/index.ts` — read limits from settings table dynamically
 
-### Performance Optimization
-- All route components lazy-loaded with `React.lazy` + `Suspense`
-- Bundle splitting: customer vs staff routes in separate chunks
-- Loading spinner fallback during chunk loads
-- SEO meta tags updated for the app
