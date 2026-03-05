@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_settings: {
+        Row: {
+          api_url: string
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          last_sync_status: string | null
+          sync_interval_mins: number
+        }
+        Insert: {
+          api_url?: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          sync_interval_mins?: number
+        }
+        Update: {
+          api_url?: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          sync_interval_mins?: number
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -346,6 +373,7 @@ export type Database = {
       shows: {
         Row: {
           created_at: string
+          external_id: string | null
           format: string
           id: string
           is_active: boolean
@@ -357,6 +385,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          external_id?: string | null
           format: string
           id?: string
           is_active?: boolean
@@ -368,6 +397,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          external_id?: string | null
           format?: string
           id?: string
           is_active?: boolean
