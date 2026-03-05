@@ -1,30 +1,47 @@
 
 
-# Make Fraud Prevention Limits Configurable from Admin Panel
+# Fix sync-shows Edge Function: Missing Database Schema
 
-## Current State
-The fraud limits are **hardcoded** in the `check-fraud` edge function:
-- Max 3 orders per phone per show
-- Max 2 orders per seat per show
+## Root Cause
 
-Both limits are **show-wise** (per show), which is correct. But they cannot be changed without editing code.
+Two database schema elements are missing, causing the sync-shows function to fail:
+
+1. **`api_settings` table does not exist** -- The edge function queries `api_settings` for the API URL and sync status, but this table was never created. This is why you get "API URL not configured" (400) or 500 errors.
+
+2. **`external_id` column missing from `shows` table** -- The edge function references `shows.external_id` to match API records to local rows, but the column doesn't exist in the schema.
 
 ## Plan
 
-### 1. Add fraud limit fields to SystemSettings UI
-Add a new "Fraud Prevention" card in `SystemSettings.tsx` with two number inputs:
-- **Max orders per phone per show** (default: 3)
-- **Max orders per seat per show** (default: 2)
+### 1. Database migration -- Create `api_settings` table and add `external_id` to `shows`
 
-These get saved as part of the existing `system_config` setting in the `settings` table (no database migration needed).
+```sql
+-- api_settings table for Show API configuration
+CREATE TABLE public.api_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  api_url TEXT NOT NULL DEFAULT '',
+  sync_interval_mins INTEGER NOT NULL DEFAULT 30,
+  last_sync_at TIMESTAMPTZ,
+  last_sync_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
-### 2. Update check-fraud edge function
-Instead of using hardcoded constants, the function will:
-- Read the `system_config` key from the `settings` table
-- Extract `max_orders_per_phone_per_show` and `max_orders_per_seat_per_show`
-- Fall back to the current defaults (3 and 2) if not configured
+ALTER TABLE public.api_settings ENABLE ROW LEVEL SECURITY;
+
+-- Admin/superadmin can manage, public can read
+CREATE POLICY "API settings publicly readable" ON public.api_settings FOR SELECT USING (true);
+CREATE POLICY "Admin can insert api_settings" ON public.api_settings FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
+CREATE POLICY "Admin can update api_settings" ON public.api_settings FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
+
+-- Add external_id to shows for API sync matching
+ALTER TABLE public.shows ADD COLUMN external_id TEXT;
+CREATE INDEX idx_shows_external_id ON public.shows(external_id);
+```
+
+### 2. No code changes needed
+The edge function and SystemSettings UI already reference these correctly -- they just need the tables to exist.
 
 ### Files modified
-- `src/components/admin/SystemSettings.tsx` — add Fraud Prevention card with two inputs
-- `supabase/functions/check-fraud/index.ts` — read limits from settings table dynamically
+- New migration SQL (database migration tool)
 
