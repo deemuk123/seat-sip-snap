@@ -6,14 +6,16 @@ const corsHeaders = {
 }
 
 interface ApiShow {
-  ShowID: number
-  ScreenID: number
-  ScreenTitle: string
-  MovieID: number
-  MovieName: string
-  StartTime: string
-  Duration: number
-  ShowDate: string
+  audi_name: string
+  movie_name: string
+  show_time: string
+}
+
+interface ApiResponse {
+  running: ApiShow[]
+  upcoming: ApiShow[]
+  latest_events: ApiShow[]
+  timestamp: string
 }
 
 Deno.serve(async (req) => {
@@ -29,7 +31,7 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Get API settings from database (no hardcoded URLs)
+    // Get API settings from database
     const { data: settings, error: settingsError } = await supabase
       .from('api_settings')
       .select('*')
@@ -51,27 +53,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Build API URL with today's date dynamically
-    const now = new Date()
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const tomorrow = new Date(now)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
-
-    // Replace date params in the configured API URL
-    const apiUrl = settings.api_url
-      .replace(/showDate=[^&]*/i, `showDate=${today}`)
-      .replace(/end=[^&]*/i, `end=${tomorrowStr}`)
-
-    console.log(`Fetching shows from: ${apiUrl}`)
+    console.log(`Fetching shows from: ${settings.api_url}`)
 
     // Fetch from external API
-    let apiData: ApiShow[]
+    let apiResponse: ApiResponse
     try {
-      const response = await fetch(apiUrl)
+      const response = await fetch(settings.api_url)
       if (!response.ok) throw new Error(`API returned HTTP ${response.status}`)
-      const jsonResponse = await response.json()
-      apiData = Array.isArray(jsonResponse) ? jsonResponse : jsonResponse.data || []
+      apiResponse = await response.json()
     } catch (fetchError) {
       const errMsg = fetchError instanceof Error ? fetchError.message : 'API fetch failed'
       console.error('API fetch error:', errMsg)
@@ -79,58 +68,66 @@ Deno.serve(async (req) => {
         .from('api_settings')
         .update({ last_sync_at: new Date().toISOString(), last_sync_status: 'error' })
         .eq('id', settings.id)
-
       return new Response(
         JSON.stringify({ error: errMsg }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`Fetched ${apiData.length} shows from API`)
+    // Combine running + upcoming + latest_events into one list
+    const allShows: ApiShow[] = [
+      ...(apiResponse.running || []),
+      ...(apiResponse.upcoming || []),
+      ...(apiResponse.latest_events || []),
+    ]
 
-    // OVERWRITE strategy: Delete ALL existing shows, then insert fresh data
-    // First, nullify show_id on orders to avoid FK constraint violations
-    const { error: nullifyError } = await supabase
+    console.log(`Fetched ${allShows.length} shows from API (running: ${apiResponse.running?.length || 0}, upcoming: ${apiResponse.upcoming?.length || 0}, events: ${apiResponse.latest_events?.length || 0})`)
+
+    // OVERWRITE: Nullify FK references, then delete all shows
+    await supabase
       .from('orders')
       .update({ show_id: null })
       .not('show_id', 'is', null)
 
-    if (nullifyError) {
-      console.error('Failed to nullify order show_ids:', nullifyError.message)
-    }
-
     const { error: deleteError } = await supabase
       .from('shows')
       .delete()
-      .gte('id', '00000000-0000-0000-0000-000000000000') // match all rows
+      .gte('id', '00000000-0000-0000-0000-000000000000')
 
     if (deleteError) {
       console.error('Failed to delete old shows:', deleteError.message)
     }
 
-    // Extract screen number from ScreenTitle (e.g., "Audi 1" -> 1)
-    function extractScreenNumber(screenTitle: string): number {
-      const match = screenTitle.match(/(\d+)/)
+    // Extract screen number from audi_name (e.g., "Audi 3" -> 3)
+    function extractScreenNumber(audiName: string): number {
+      const match = audiName.match(/(\d+)/)
       return match ? parseInt(match[1], 10) : 1
     }
 
-    // Build rows for batch insert
-    const showRows = apiData.map((show) => {
-      const showDate = show.ShowDate.split('T')[0]
-      const [hours, minutes] = show.StartTime.split(':')
-      const normalizedTime = `${hours.padStart(2, '0')}:${(minutes || '0').padStart(2, '0')}`
-      return {
-        external_id: show.ShowID.toString(),
-        movie_name: show.MovieName,
-        show_time: `${showDate} ${normalizedTime}`,
-        screen_number: extractScreenNumber(show.ScreenTitle),
+    // Today's date for show_time display
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+    // Build rows — deduplicate by movie_name + show_time + audi_name
+    const seen = new Set<string>()
+    const showRows = allShows
+      .filter((show) => {
+        const key = `${show.movie_name}|${show.show_time}|${show.audi_name}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .map((show) => ({
+        external_id: `${show.movie_name}-${show.audi_name}-${show.show_time}`,
+        movie_name: show.movie_name,
+        show_time: `${today} ${show.show_time}`,
+        screen_number: extractScreenNumber(show.audi_name),
         language: 'Hindi',
         format: '2D',
         is_active: true,
-      }
-    })
+      }))
 
-    // Batch insert in chunks of 100
+    // Batch insert
     let processed = 0
     const BATCH_SIZE = 100
     for (let i = 0; i < showRows.length; i += BATCH_SIZE) {
