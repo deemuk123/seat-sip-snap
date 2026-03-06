@@ -16,23 +16,6 @@ interface ApiShow {
   ShowDate: string
 }
 
-function getTodayDate(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function getTomorrowDate(): string {
-  const now = new Date()
-  now.setDate(now.getDate() + 1)
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -46,50 +29,84 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Get API settings
-    const { data: settings } = await supabase
+    // Get API settings from database (no hardcoded URLs)
+    const { data: settings, error: settingsError } = await supabase
       .from('api_settings')
       .select('*')
       .limit(1)
-      .single()
+      .maybeSingle()
+
+    if (settingsError) {
+      console.error('Failed to read api_settings:', settingsError.message)
+      return new Response(
+        JSON.stringify({ error: 'Failed to read API settings: ' + settingsError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!settings?.api_url) {
       return new Response(
-        JSON.stringify({ error: 'API URL not configured' }),
+        JSON.stringify({ error: 'API URL not configured. Go to Admin → Settings → Show API Integration to set it.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const today = getTodayDate()
-    const tomorrow = getTomorrowDate()
+    // Build API URL with today's date dynamically
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
 
-    // Replace date params in API URL
+    // Replace date params in the configured API URL
     const apiUrl = settings.api_url
-      .replace(/showDate=[^&]+/, `showDate=${today}`)
-      .replace(/end=[^&]+/, `end=${tomorrow}`)
+      .replace(/showDate=[^&]*/i, `showDate=${today}`)
+      .replace(/end=[^&]*/i, `end=${tomorrowStr}`)
 
-    console.log(`Syncing shows from: ${apiUrl}`)
+    console.log(`Fetching shows from: ${apiUrl}`)
 
+    // Fetch from external API
     let apiData: ApiShow[]
     try {
       const response = await fetch(apiUrl)
-      if (!response.ok) throw new Error(`API returned ${response.status}`)
+      if (!response.ok) throw new Error(`API returned HTTP ${response.status}`)
       const jsonResponse = await response.json()
       apiData = Array.isArray(jsonResponse) ? jsonResponse : jsonResponse.data || []
     } catch (fetchError) {
+      const errMsg = fetchError instanceof Error ? fetchError.message : 'API fetch failed'
+      console.error('API fetch error:', errMsg)
       await supabase
         .from('api_settings')
         .update({ last_sync_at: new Date().toISOString(), last_sync_status: 'error' })
         .eq('id', settings.id)
 
       return new Response(
-        JSON.stringify({ error: fetchError instanceof Error ? fetchError.message : 'API fetch failed' }),
+        JSON.stringify({ error: errMsg }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Clean up old shows
-    await supabase.from('shows').delete().lt('show_time', today).not('external_id', 'is', null)
+    console.log(`Fetched ${apiData.length} shows from API`)
+
+    // OVERWRITE strategy: Delete ALL existing shows, then insert fresh data
+    // First, nullify show_id on orders to avoid FK constraint violations
+    const { error: nullifyError } = await supabase
+      .from('orders')
+      .update({ show_id: null })
+      .not('show_id', 'is', null)
+
+    if (nullifyError) {
+      console.error('Failed to nullify order show_ids:', nullifyError.message)
+    }
+
+    const { error: deleteError } = await supabase
+      .from('shows')
+      .delete()
+      .gte('id', '00000000-0000-0000-0000-000000000000') // match all rows
+
+    if (deleteError) {
+      console.error('Failed to delete old shows:', deleteError.message)
+    }
 
     // Extract screen number from ScreenTitle (e.g., "Audi 1" -> 1)
     function extractScreenNumber(screenTitle: string): number {
@@ -97,44 +114,33 @@ Deno.serve(async (req) => {
       return match ? parseInt(match[1], 10) : 1
     }
 
-    // Upsert shows
-    let processed = 0
-    for (const show of apiData) {
+    // Build rows for batch insert
+    const showRows = apiData.map((show) => {
       const showDate = show.ShowDate.split('T')[0]
       const [hours, minutes] = show.StartTime.split(':')
       const normalizedTime = `${hours.padStart(2, '0')}:${(minutes || '0').padStart(2, '0')}`
-      const showTimeDisplay = `${showDate} ${normalizedTime}`
-      const screenNumber = extractScreenNumber(show.ScreenTitle)
-      const externalId = show.ShowID.toString()
-
-      const { data: existing } = await supabase
-        .from('shows')
-        .select('id')
-        .eq('external_id', externalId)
-        .maybeSingle()
-
-      if (existing) {
-        await supabase
-          .from('shows')
-          .update({
-            movie_name: show.MovieName,
-            show_time: showTimeDisplay,
-            screen_number: screenNumber,
-            is_active: true,
-          })
-          .eq('id', existing.id)
-      } else {
-        await supabase.from('shows').insert({
-          external_id: externalId,
-          movie_name: show.MovieName,
-          show_time: showTimeDisplay,
-          screen_number: screenNumber,
-          language: 'Hindi',
-          format: '2D',
-          is_active: true,
-        })
+      return {
+        external_id: show.ShowID.toString(),
+        movie_name: show.MovieName,
+        show_time: `${showDate} ${normalizedTime}`,
+        screen_number: extractScreenNumber(show.ScreenTitle),
+        language: 'Hindi',
+        format: '2D',
+        is_active: true,
       }
-      processed++
+    })
+
+    // Batch insert in chunks of 100
+    let processed = 0
+    const BATCH_SIZE = 100
+    for (let i = 0; i < showRows.length; i += BATCH_SIZE) {
+      const batch = showRows.slice(i, i + BATCH_SIZE)
+      const { error: insertError } = await supabase.from('shows').insert(batch)
+      if (insertError) {
+        console.error(`Batch insert error at offset ${i}:`, insertError.message)
+      } else {
+        processed += batch.length
+      }
     }
 
     // Update sync status
@@ -143,10 +149,10 @@ Deno.serve(async (req) => {
       .update({ last_sync_at: new Date().toISOString(), last_sync_status: 'success' })
       .eq('id', settings.id)
 
-    console.log(`Sync completed: ${processed} shows processed`)
+    console.log(`Sync completed: ${processed} shows inserted`)
 
     return new Response(
-      JSON.stringify({ success: true, processed }),
+      JSON.stringify({ success: true, processed, deleted: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
