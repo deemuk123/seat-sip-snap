@@ -1,5 +1,4 @@
-import { motion } from "framer-motion";
-import { Clock, MapPin, Phone, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, MapPin, Phone, Package, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { DBOrder, OrderStatus } from "@/lib/supabase-manager";
@@ -13,7 +12,7 @@ const statusConfig: Record<OrderStatus, { label: string; className: string }> = 
   cancelled: { label: "Cancelled", className: "bg-red-500/20 text-red-400 border-red-500/30" },
 };
 
-// No intermediate transitions – only Verify & Deliver or Cancel
+const SLA_WARN_MINS = 10;
 
 interface OrderCardProps {
   order: DBOrder;
@@ -24,17 +23,19 @@ interface OrderCardProps {
 
 export default function OrderCard({ order, onStatusChange, onVerifyDeliver, onCancel }: OrderCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const show = order.show_snapshot as any;
   const config = statusConfig[order.status];
   const isTerminal = order.status === "delivered" || order.status === "cancelled";
   const timeAgo = getTimeAgo(order.created_at);
+  const pendingMins = getPendingMins(order.created_at);
+  const isOverdue = !isTerminal && pendingMins >= SLA_WARN_MINS;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl bg-card border border-border p-4 space-y-3"
+    <div
+      className={`rounded-xl border p-4 space-y-3 transition-colors ${
+        isOverdue
+          ? "bg-destructive/10 border-destructive/50 ring-1 ring-destructive/30"
+          : "bg-card border-border"
+      }`}
     >
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -42,6 +43,11 @@ export default function OrderCard({ order, onStatusChange, onVerifyDeliver, onCa
           <div className="flex items-center gap-2">
             <span className="font-display font-bold text-foreground text-lg">{order.order_code}</span>
             <Badge variant="outline" className={config.className}>{config.label}</Badge>
+            {isOverdue && (
+              <Badge variant="outline" className="bg-destructive/20 text-destructive border-destructive/40 text-[10px] animate-pulse">
+                <AlertTriangle className="w-3 h-3 mr-1" />{pendingMins}m
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
             <Clock className="w-3 h-3" /> {timeAgo}
@@ -61,7 +67,7 @@ export default function OrderCard({ order, onStatusChange, onVerifyDeliver, onCa
           <span className="flex items-center gap-1"><Package className="w-3 h-3" /> Counter Pickup</span>
         )}
         <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {order.phone}</span>
-        {show?.movieName && <span>🎬 {show.movieName}</span>}
+        <span className="font-medium text-primary">₹{order.total}</span>
       </div>
 
       {/* Items */}
@@ -91,7 +97,7 @@ export default function OrderCard({ order, onStatusChange, onVerifyDeliver, onCa
           </Button>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -103,4 +109,8 @@ function getTimeAgo(dateStr: string): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function getPendingMins(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
 }
