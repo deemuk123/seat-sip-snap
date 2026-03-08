@@ -228,6 +228,11 @@ const Checkout = () => {
             <span>Discount ({appliedCoupon})</span><span>-₹{discount}</span>
           </div>
         )}
+        {flashSavings > 0 && (
+          <div className="flex justify-between text-sm text-primary mb-1">
+            <span>⚡ Flash Sale</span><span>-₹{flashSavings}</span>
+          </div>
+        )}
         <div className="flex justify-between text-lg font-bold font-display text-foreground border-t border-border pt-2">
           <span>Total</span><span className="text-primary">₹{finalTotal}</span>
         </div>
