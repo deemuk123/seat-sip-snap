@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Film, Clock, Monitor, Languages, Sparkles, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Film, Clock, Monitor, Languages, Sparkles, Search, ChevronDown, ChevronUp, Loader2, Coffee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Order, Show } from "@/data/mockData";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { fetchShows, lookupOrdersByPhone } from "@/lib/supabase-orders";
 import { supabase } from "@/integrations/supabase/client";
+import { isInInterval, formatIntervalWindow } from "@/lib/interval-utils";
 
 const ShowSelection = () => {
   const navigate = useNavigate();
