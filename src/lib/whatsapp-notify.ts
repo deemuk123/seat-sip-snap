@@ -14,29 +14,37 @@ function sendWhatsApp(text: string) {
 export function notifyNewOrder(params: {
   orderCode: string;
   total: number;
-  itemCount: number;
+  items: { name: string; quantity: number; price: number }[];
   deliveryMode: "seat" | "counter";
   seatNumber?: string;
   phone: string;
   movieName?: string;
+  showTime?: string;
 }) {
   const delivery =
     params.deliveryMode === "seat"
-      ? `🪑 Seat: ${params.seatNumber || "N/A"}`
-      : "🏪 Counter Pickup";
+      ? `🪑 *Seat Delivery* — ${params.seatNumber || "N/A"}`
+      : "🏪 *Counter Pickup*";
+
+  const itemLines = params.items
+    .map((i) => `  • ${i.name} x${i.quantity} — ₹${(i.price * i.quantity).toFixed(2)}`)
+    .join("\n");
 
   const text = [
     `🆕 *New Order Received!*`,
     ``,
-    `📋 Order: *${params.orderCode}*`,
+    `📋 Order ID: *${params.orderCode}*`,
     `🎬 Movie: ${params.movieName || "N/A"}`,
+    `🕐 Show Time: ${params.showTime || "N/A"}`,
     `📞 Phone: ${params.phone}`,
     `${delivery}`,
-    `🛒 Items: ${params.itemCount}`,
-    `💰 Total: ₹${params.total.toFixed(2)}`,
+    ``,
+    `🛒 *Items:*`,
+    itemLines,
+    ``,
+    `💰 *Total: ₹${params.total.toFixed(2)}*`,
   ].join("\n");
 
-  // Fire and forget
   sendWhatsApp(text);
 }
 
