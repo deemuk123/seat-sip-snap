@@ -382,6 +382,7 @@ export type Database = {
           poster_url: string | null
           screen_number: number
           show_time: string
+          status: string
         }
         Insert: {
           created_at?: string
@@ -394,6 +395,7 @@ export type Database = {
           poster_url?: string | null
           screen_number: number
           show_time: string
+          status?: string
         }
         Update: {
           created_at?: string
@@ -406,6 +408,7 @@ export type Database = {
           poster_url?: string | null
           screen_number?: number
           show_time?: string
+          status?: string
         }
         Relationships: []
       }

@@ -115,6 +115,7 @@ export async function fetchShows() {
     language: s.language,
     format: s.format,
     posterUrl: s.poster_url || "",
+    status: (s as any).status || "upcoming",
   }));
 }
 

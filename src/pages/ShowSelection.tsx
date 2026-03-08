@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Film, Clock, Monitor, Languages, Sparkles, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Order, Show } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
@@ -119,25 +120,42 @@ const ShowSelection = () => {
       {/* Shows List */}
       {loadingShows ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-      ) : (
-        <div className="space-y-4">
-          {shows.map((show, index) => (
-            <motion.button key={show.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }} onClick={() => handleSelectShow(show)} className="w-full text-left rounded-xl bg-card border border-border p-4 active:scale-[0.98] transition-transform">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-display font-semibold text-lg text-foreground truncate">{show.movieName}</h3>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2.5 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-primary" />{show.showTime}</span>
-                    <span className="flex items-center gap-1.5"><Monitor className="w-3.5 h-3.5 text-primary" />Screen {show.screenNumber}</span>
-                    <span className="flex items-center gap-1.5"><Languages className="w-3.5 h-3.5 text-primary" />{show.language}</span>
+      ) : (() => {
+        const runningShows = shows.filter(s => s.status === "running");
+        const upcomingShows = shows.filter(s => s.status !== "running").slice(0, 2);
+        const displayShows = [...runningShows, ...upcomingShows];
+
+        if (displayShows.length === 0) {
+          return <p className="text-center text-muted-foreground py-12">No shows available right now.</p>;
+        }
+
+        return (
+          <div className="space-y-4">
+            {displayShows.map((show, index) => (
+              <motion.button key={show.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }} onClick={() => handleSelectShow(show)} className="w-full text-left rounded-xl bg-card border border-border p-4 active:scale-[0.98] transition-transform">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display font-semibold text-lg text-foreground truncate">{show.movieName}</h3>
+                      {show.status === "running" ? (
+                        <Badge className="bg-green-600 text-white border-0 text-[10px] px-1.5 py-0">Now Playing</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Up Next</Badge>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2.5 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-primary" />{show.showTime}</span>
+                      <span className="flex items-center gap-1.5"><Monitor className="w-3.5 h-3.5 text-primary" />Screen {show.screenNumber}</span>
+                      {show.language && <span className="flex items-center gap-1.5"><Languages className="w-3.5 h-3.5 text-primary" />{show.language}</span>}
+                    </div>
                   </div>
+                  {show.format && <span className="shrink-0 rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{show.format}</span>}
                 </div>
-                <span className="shrink-0 rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{show.format}</span>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      )}
+              </motion.button>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 };
