@@ -137,9 +137,10 @@ export default function PrizeManager() {
     }
   };
 
-  // Auto-calculate tier probabilities from prize weights
+  // Auto-calculate tier probabilities from prize weights + try again weight
   const activePrizes = prizes.filter((p) => p.is_active && (p.max_quantity === 0 || p.used_count < p.max_quantity));
-  const totalWeight = activePrizes.reduce((s, p) => s + (p.probability_weight || 1), 0);
+  const prizeWeight = activePrizes.reduce((s, p) => s + (p.probability_weight || 1), 0);
+  const grandTotal = prizeWeight + tryAgainWeight;
 
   const tierProbs = TIER_OPTIONS.map((tier) => {
     const tierWeight = activePrizes
@@ -148,11 +149,11 @@ export default function PrizeManager() {
     return {
       tier,
       weight: tierWeight,
-      pct: totalWeight > 0 ? Math.round((tierWeight / totalWeight) * 100) : 0,
+      pct: grandTotal > 0 ? Math.round((tierWeight / grandTotal) * 100) : 0,
     };
   });
 
-  const tryAgainPct = totalWeight > 0 ? Math.max(0, 100 - tierProbs.reduce((s, t) => s + t.pct, 0)) : 100;
+  const tryAgainPct = grandTotal > 0 ? Math.round((tryAgainWeight / grandTotal) * 100) : 100;
 
   const grouped = TIER_OPTIONS.map((tier) => ({
     tier,
