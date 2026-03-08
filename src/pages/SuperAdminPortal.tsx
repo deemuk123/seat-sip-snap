@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList, Ticket, Gift } from "lucide-react";
+import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList, Ticket, Gift, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/superadmin/UserManagement";
@@ -8,6 +8,7 @@ import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
 import OrderDetailsTable from "@/components/superadmin/OrderDetailsTable";
 import CouponsSent from "@/components/superadmin/CouponsSent";
 import PrizeManager from "@/components/superadmin/PrizeManager";
+import FlashSaleManager from "@/components/superadmin/FlashSaleManager";
 
 const SuperAdminPortal = () => {
   const navigate = useNavigate();
