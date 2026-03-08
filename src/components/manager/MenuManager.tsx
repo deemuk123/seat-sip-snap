@@ -137,7 +137,9 @@ export default function MenuManager() {
                     <span className="font-medium text-sm text-foreground truncate">{item.name}</span>
                     <span className="text-xs text-muted-foreground">₹{item.price}</span>
                     <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{item.category}</span>
-                  </div>
+                    {(item.availableFrom || item.availableUntil) && (
+                      <span className="text-xs text-accent-foreground bg-accent px-1.5 py-0.5 rounded">🕐 {item.availableFrom || "00:00"}–{item.availableUntil || "23:59"}</span>
+                    )}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
