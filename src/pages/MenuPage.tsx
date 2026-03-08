@@ -16,6 +16,7 @@ const MenuPage = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuCategories, setMenuCategories] = useState<string[]>(["All"]);
   const [loading, setLoading] = useState(true);
+  const [flashSales, setFlashSales] = useState<Awaited<ReturnType<typeof fetchActiveFlashSales>>>([]);
 
   useEffect(() => {
     Promise.all([fetchMenuItems(), fetchCategories()]).then(([items, cats]) => {
