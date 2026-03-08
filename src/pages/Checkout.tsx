@@ -54,7 +54,6 @@ const Checkout = () => {
 
       if (data?.otp) {
         setSimulatedOtp(data.otp);
-        toast.info(`Your OTP is: ${data.otp}`, { duration: 10000 });
       } else {
         toast.success("OTP sent to your phone");
       }
