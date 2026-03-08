@@ -13,6 +13,13 @@ const MenuPage = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    fetchMenuItems().then((data) => {
+      setMenuItems(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
   const isWithinTimeWindow = (from?: string, until?: string) => {
     if (!from && !until) return true;
     const now = new Date();
