@@ -78,7 +78,7 @@ async function assignScratchTier(): Promise<ScratchReward | null> {
       return { tier: "none", discountValue: 0 };
     }
 
-    // Sequential prize selection from scratch_prizes table
+    // Fetch prizes for this tier
     const { data: prizes } = await supabase
       .from("scratch_prizes")
       .select("*")
@@ -95,21 +95,54 @@ async function assignScratchTier(): Promise<ScratchReward | null> {
       return { tier: selectedTier, discountValue: fallbackDiscount };
     }
 
-    // Pick the first prize that still has stock
-    for (const prize of prizes) {
-      if (prize.max_quantity === 0 || prize.used_count < prize.max_quantity) {
-        // Increment used_count
-        await supabase
-          .from("scratch_prizes")
-          .update({ used_count: prize.used_count + 1 })
-          .eq("id", prize.id);
+    // Filter to prizes with available stock
+    const available = prizes.filter(
+      (p: any) => p.max_quantity === 0 || p.used_count < p.max_quantity
+    );
 
-        return { tier: selectedTier, discountValue: prize.discount_value };
+    if (available.length === 0) {
+      return { tier: "none", discountValue: 0 };
+    }
+
+    // Split by selection mode
+    const seqPrizes = available.filter((p: any) => p.selection_mode === "sequential");
+    const probPrizes = available.filter((p: any) => p.selection_mode === "probability");
+
+    let selectedPrize: any = null;
+
+    // Try probability-based first if any exist
+    if (probPrizes.length > 0) {
+      const totalWeight = probPrizes.reduce((s: number, p: any) => s + (p.probability_weight || 0), 0);
+      if (totalWeight > 0) {
+        const probRoll = Math.random() * totalWeight;
+        let cum = 0;
+        for (const p of probPrizes) {
+          cum += p.probability_weight || 0;
+          if (probRoll < cum) {
+            selectedPrize = p;
+            break;
+          }
+        }
       }
     }
 
-    // All prizes for this tier exhausted → "Try Again"
-    return { tier: "none", discountValue: 0 };
+    // Fallback to sequential if no probability prize was selected
+    if (!selectedPrize && seqPrizes.length > 0) {
+      selectedPrize = seqPrizes[0]; // First available in sort order
+    }
+
+    // Last fallback: any available prize
+    if (!selectedPrize) {
+      selectedPrize = available[0];
+    }
+
+    // Increment used_count
+    await supabase
+      .from("scratch_prizes")
+      .update({ used_count: selectedPrize.used_count + 1 })
+      .eq("id", selectedPrize.id);
+
+    return { tier: selectedTier, discountValue: selectedPrize.discount_value };
   } catch (err) {
     console.error("Scratch tier assignment failed:", err);
     return null;
