@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Save, RefreshCw, CheckCircle2, XCircle, Gift } from "lucide-react";
+import { Save, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface SystemConfig {
@@ -67,10 +67,8 @@ interface ApiSettings {
 
 export default function SystemSettings() {
   const [config, setConfig] = useState<SystemConfig>(DEFAULT_CONFIG);
-  const [scratch, setScratch] = useState<ScratchCardConfig>(DEFAULT_SCRATCH);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingScratch, setSavingScratch] = useState(false);
 
   // Show API state
   const [apiSettings, setApiSettings] = useState<ApiSettings>({
@@ -85,14 +83,12 @@ export default function SystemSettings() {
   useEffect(() => {
     (async () => {
       try {
-        const [val, apiRes, scratchVal] = await Promise.all([
+        const [val, apiRes] = await Promise.all([
           fetchSetting("system_config"),
           (supabase as any).from("api_settings").select("*").limit(1).maybeSingle(),
-          fetchSetting("scratch_card_config"),
         ]);
         if (val) setConfig({ ...DEFAULT_CONFIG, ...val });
         if (apiRes.data) setApiSettings(apiRes.data as ApiSettings);
-        if (scratchVal) setScratch({ ...DEFAULT_SCRATCH, ...scratchVal });
       } catch { /* use defaults */ }
       setLoading(false);
     })();
@@ -107,24 +103,10 @@ export default function SystemSettings() {
     setSaving(false);
   };
 
-  const handleSaveScratch = async () => {
-    setSavingScratch(true);
-    try {
-      await upsertSetting("scratch_card_config", scratch);
-      toast.success("Scratch card settings saved");
-    } catch { toast.error("Failed to save scratch card settings"); }
-    setSavingScratch(false);
-  };
 
   const update = <K extends keyof SystemConfig>(key: K, value: SystemConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
-
-  const updateScratch = <K extends keyof ScratchCardConfig>(key: K, value: ScratchCardConfig[K]) => {
-    setScratch(prev => ({ ...prev, [key]: value }));
-  };
-
-  const tryAgainProb = Math.max(0, 100 - scratch.gold_prob - scratch.silver_prob - scratch.bronze_prob);
 
   const handleSaveApiSettings = async () => {
     setSavingApi(true);
@@ -294,90 +276,6 @@ export default function SystemSettings() {
         {saving ? "Saving…" : "Save Settings"}
       </Button>
 
-      {/* Scratch Card Rewards */}
-      <Card className="border-primary/30">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Gift className="w-4 h-4 text-primary" />
-            Scratch Card Rewards
-            {scratch.enabled ? (
-              <span className="text-[10px] text-primary font-normal ml-auto">✅ Enabled by Super Admin</span>
-            ) : (
-              <span className="text-[10px] text-muted-foreground font-normal ml-auto">❌ Disabled — contact Super Admin to enable</span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {scratch.enabled && (
-            <>
-              {/* Probabilities */}
-              <div>
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Probabilities (%)</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs">🥇 Gold</Label>
-                    <Input type="number" min={0} max={100} value={scratch.gold_prob} onChange={e => updateScratch("gold_prob", Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">🥈 Silver</Label>
-                    <Input type="number" min={0} max={100} value={scratch.silver_prob} onChange={e => updateScratch("silver_prob", Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">🥉 Bronze</Label>
-                    <Input type="number" min={0} max={100} value={scratch.bronze_prob} onChange={e => updateScratch("bronze_prob", Number(e.target.value))} />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  "Try Again" probability: <span className="font-bold text-foreground">{tryAgainProb}%</span>
-                </p>
-              </div>
-
-              {/* Discounts */}
-              <div>
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Discount Values (%)</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs">🥇 Gold</Label>
-                    <Input type="number" min={0} max={100} value={scratch.gold_discount} onChange={e => updateScratch("gold_discount", Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">🥈 Silver</Label>
-                    <Input type="number" min={0} max={100} value={scratch.silver_discount} onChange={e => updateScratch("silver_discount", Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">🥉 Bronze</Label>
-                    <Input type="number" min={0} max={100} value={scratch.bronze_discount} onChange={e => updateScratch("bronze_discount", Number(e.target.value))} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Max Caps */}
-              <div>
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Max Cards (0 = unlimited)</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs">🥇 Gold</Label>
-                    <Input type="number" min={0} value={scratch.gold_max} onChange={e => updateScratch("gold_max", Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">🥈 Silver</Label>
-                    <Input type="number" min={0} value={scratch.silver_max} onChange={e => updateScratch("silver_max", Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">🥉 Bronze</Label>
-                    <Input type="number" min={0} value={scratch.bronze_max} onChange={e => updateScratch("bronze_max", Number(e.target.value))} />
-                  </div>
-                </div>
-              </div>
-
-              <Button onClick={handleSaveScratch} disabled={savingScratch} className="w-full" variant="outline">
-                <Gift className="w-4 h-4 mr-1.5" />
-                {savingScratch ? "Saving…" : "Save Scratch Card Settings"}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

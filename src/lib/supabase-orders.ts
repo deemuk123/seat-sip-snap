@@ -4,99 +4,26 @@ import type { Show, CartItem, Order, ScratchReward } from "@/data/mockData";
 import { notifyNewOrder } from "@/lib/whatsapp-notify";
 import { fetchSetting } from "@/lib/supabase-admin";
 
-interface ScratchCardConfig {
-  enabled: boolean;
-  gold_prob: number;
-  silver_prob: number;
-  bronze_prob: number;
-  gold_discount: number;
-  silver_discount: number;
-  bronze_discount: number;
-  gold_max: number;
-  silver_max: number;
-  bronze_max: number;
-}
-
-const DEFAULT_SCRATCH_CONFIG: ScratchCardConfig = {
-  enabled: false,
-  gold_prob: 10,
-  silver_prob: 30,
-  bronze_prob: 60,
-  gold_discount: 30,
-  silver_discount: 15,
-  bronze_discount: 5,
-  gold_max: 0,
-  silver_max: 0,
-  bronze_max: 0,
-};
-
 async function assignScratchTier(): Promise<ScratchReward | null> {
   try {
+    // Check if scratch cards are enabled (only toggle stored in settings)
     const configVal = await fetchSetting("scratch_card_config");
-    const config: ScratchCardConfig = configVal
-      ? { ...DEFAULT_SCRATCH_CONFIG, ...configVal }
-      : DEFAULT_SCRATCH_CONFIG;
+    const isEnabled = configVal?.enabled ?? false;
+    if (!isEnabled) return null;
 
-    if (!config.enabled) return null;
-
-    // Check current tier counts against max caps
-    const { data: counts } = await supabase
-      .from("scratch_rewards")
-      .select("tier");
-
-    const tierCounts = { gold: 0, silver: 0, bronze: 0 };
-    (counts || []).forEach((r: any) => {
-      if (r.tier in tierCounts) tierCounts[r.tier as keyof typeof tierCounts]++;
-    });
-
-    // Build available tiers with probabilities
-    let availableTiers: { tier: "gold" | "silver" | "bronze"; prob: number }[] = [];
-
-    if (config.gold_max === 0 || tierCounts.gold < config.gold_max) {
-      availableTiers.push({ tier: "gold", prob: config.gold_prob });
-    }
-    if (config.silver_max === 0 || tierCounts.silver < config.silver_max) {
-      availableTiers.push({ tier: "silver", prob: config.silver_prob });
-    }
-    if (config.bronze_max === 0 || tierCounts.bronze < config.bronze_max) {
-      availableTiers.push({ tier: "bronze", prob: config.bronze_prob });
-    }
-
-    const roll = Math.random() * 100;
-    let cumulative = 0;
-    let selectedTier: "gold" | "silver" | "bronze" | "none" = "none";
-
-    for (const t of availableTiers) {
-      cumulative += t.prob;
-      if (roll < cumulative) {
-        selectedTier = t.tier;
-        break;
-      }
-    }
-
-    if (selectedTier === "none") {
-      return { tier: "none", discountValue: 0 };
-    }
-
-    // Fetch prizes for this tier
-    const { data: prizes } = await supabase
+    // Fetch all active prizes — probabilities are derived from these
+    const { data: allPrizes } = await supabase
       .from("scratch_prizes")
       .select("*")
-      .eq("tier", selectedTier)
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
 
-    if (!prizes || prizes.length === 0) {
-      // Fallback to config discount if no prizes configured
-      const fallbackDiscount =
-        selectedTier === "gold" ? config.gold_discount :
-        selectedTier === "silver" ? config.silver_discount :
-        config.bronze_discount;
-      return { tier: selectedTier, discountValue: fallbackDiscount };
+    if (!allPrizes || allPrizes.length === 0) {
+      return { tier: "none", discountValue: 0 };
     }
 
     // Filter to prizes with available stock
-    const available = prizes.filter(
+    const available = allPrizes.filter(
       (p: any) => p.max_quantity === 0 || p.used_count < p.max_quantity
     );
 
@@ -104,36 +31,24 @@ async function assignScratchTier(): Promise<ScratchReward | null> {
       return { tier: "none", discountValue: 0 };
     }
 
-    // Split by selection mode
-    const seqPrizes = available.filter((p: any) => p.selection_mode === "sequential");
-    const probPrizes = available.filter((p: any) => p.selection_mode === "probability");
+    // Calculate total weight across ALL available prizes
+    const totalWeight = available.reduce((s: number, p: any) => s + (p.probability_weight || 1), 0);
 
+    // Roll a random number to pick a prize directly
+    const roll = Math.random() * totalWeight;
+    let cumulative = 0;
     let selectedPrize: any = null;
 
-    // Try probability-based first if any exist
-    if (probPrizes.length > 0) {
-      const totalWeight = probPrizes.reduce((s: number, p: any) => s + (p.probability_weight || 0), 0);
-      if (totalWeight > 0) {
-        const probRoll = Math.random() * totalWeight;
-        let cum = 0;
-        for (const p of probPrizes) {
-          cum += p.probability_weight || 0;
-          if (probRoll < cum) {
-            selectedPrize = p;
-            break;
-          }
-        }
+    for (const prize of available) {
+      cumulative += prize.probability_weight || 1;
+      if (roll < cumulative) {
+        selectedPrize = prize;
+        break;
       }
     }
 
-    // Fallback to sequential if no probability prize was selected
-    if (!selectedPrize && seqPrizes.length > 0) {
-      selectedPrize = seqPrizes[0]; // First available in sort order
-    }
-
-    // Last fallback: any available prize
     if (!selectedPrize) {
-      selectedPrize = available[0];
+      selectedPrize = available[available.length - 1];
     }
 
     // Increment used_count
@@ -142,7 +57,7 @@ async function assignScratchTier(): Promise<ScratchReward | null> {
       .update({ used_count: selectedPrize.used_count + 1 })
       .eq("id", selectedPrize.id);
 
-    return { tier: selectedTier, discountValue: selectedPrize.discount_value };
+    return { tier: selectedPrize.tier, discountValue: selectedPrize.discount_value };
   } catch (err) {
     console.error("Scratch tier assignment failed:", err);
     return null;
