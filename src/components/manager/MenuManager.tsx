@@ -83,10 +83,10 @@ export default function MenuManager() {
     if (!form.name || isNaN(price) || price <= 0) { toast.error("Name and valid price required"); return; }
     try {
       if (editing) {
-        await updateMenuItem(editing.id, { name: form.name, price, description: form.description, category: form.category, image_url: form.image_url });
+        await updateMenuItem(editing.id, { name: form.name, price, description: form.description, category: form.category, image_url: form.image_url, available_from: form.available_from || null, available_until: form.available_until || null });
         toast.success("Item updated");
       } else {
-        await createMenuItem({ name: form.name, price, description: form.description, category: form.category, image_url: form.image_url });
+        await createMenuItem({ name: form.name, price, description: form.description, category: form.category, image_url: form.image_url, available_from: form.available_from || null, available_until: form.available_until || null });
         toast.success("Item created");
       }
       setDialogOpen(false);
