@@ -32,7 +32,8 @@ serve(async (req) => {
       });
     }
 
-    const apiUrl = Deno.env.get("WAHA_API_URL") || "https://devlikeaprowaha-production-4380.up.railway.app";
+    const rawApiUrl = Deno.env.get("WAHA_API_URL") || "https://devlikeaprowaha-production-4380.up.railway.app";
+    const apiUrl = rawApiUrl.replace(/\/+$/, ""); // remove trailing slashes
     const apiKey = Deno.env.get("WAHA_API_KEY");
     const targetChatId = chatId || Deno.env.get("WAHA_CHAT_ID") || "120363422396487980@g.us";
 
@@ -43,9 +44,10 @@ serve(async (req) => {
       });
     }
 
-    console.log("Sending to WAHA:", { apiUrl, targetChatId, textLength: text.length });
+    const endpoint = `${apiUrl}/api/sendText`;
+    console.log("Sending to WAHA:", { endpoint, targetChatId, textLength: text.length, keyLength: apiKey.length, keyPrefix: apiKey.substring(0, 6) });
 
-    const response = await fetch(`${apiUrl}/api/sendText`, {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "accept": "application/json",
