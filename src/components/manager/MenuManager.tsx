@@ -21,6 +21,8 @@ interface MenuItemData {
   category: string;
   imageUrl: string;
   available: boolean;
+  availableFrom?: string;
+  availableUntil?: string;
 }
 
 const CATEGORIES = ["Popcorn", "Combos", "Beverages", "Snacks", "Premium", "Offers"];

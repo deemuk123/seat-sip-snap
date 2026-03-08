@@ -140,6 +140,8 @@ export async function createMenuItem(item: {
   category: string;
   image_url?: string;
   available?: boolean;
+  available_from?: string | null;
+  available_until?: string | null;
 }) {
   const { data, error } = await supabase.from("menu_items").insert(item).select().single();
   if (error) throw error;
