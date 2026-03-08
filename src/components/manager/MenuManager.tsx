@@ -297,7 +297,6 @@ export default function MenuManager() {
     </div>
   );
 }
-  const [items, setItems] = useState<MenuItemData[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MenuItemData | null>(null);
