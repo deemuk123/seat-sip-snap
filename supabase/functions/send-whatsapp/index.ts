@@ -11,7 +11,26 @@ serve(async (req) => {
   }
 
   try {
-    const { text, chatId } = await req.json();
+    let text = "";
+    let chatId = "";
+
+    try {
+      const body = await req.json();
+      text = body.text || "";
+      chatId = body.chatId || "";
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON in request body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!text) {
+      return new Response(JSON.stringify({ error: "Missing 'text' in request body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const apiUrl = Deno.env.get("WAHA_API_URL") || "https://devlikeaprowaha-production-4380.up.railway.app";
     const apiKey = Deno.env.get("WAHA_API_KEY");
@@ -23,6 +42,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log("Sending to WAHA:", { apiUrl, targetChatId, textLength: text.length });
 
     const response = await fetch(`${apiUrl}/api/sendText`, {
       method: "POST",
@@ -41,10 +62,18 @@ serve(async (req) => {
       }),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log("WAHA response status:", response.status, "body:", responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = { rawResponse: responseText };
+    }
 
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: "WhatsApp API error", details: data }), {
+      return new Response(JSON.stringify({ error: "WhatsApp API error", status: response.status, details: data }), {
         status: response.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -54,6 +83,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("Edge function error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
