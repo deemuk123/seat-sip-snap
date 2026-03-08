@@ -15,8 +15,8 @@ Deno.serve(async (req) => {
 
     if (!phone || !otp) {
       return new Response(
-        JSON.stringify({ error: 'Phone and OTP required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ verified: false, error: 'Phone and OTP required' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -39,22 +39,22 @@ Deno.serve(async (req) => {
 
     if (!record) {
       return new Response(
-        JSON.stringify({ error: 'No OTP found. Please request a new one.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ verified: false, error: 'No OTP found. Please request a new one.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (new Date(record.expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ error: 'OTP expired. Please request a new one.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ verified: false, error: 'OTP expired. Please request a new one.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (record.attempts >= 3) {
       return new Response(
-        JSON.stringify({ error: 'Maximum attempts exceeded. Please request a new OTP.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ verified: false, error: 'Maximum attempts exceeded. Please request a new OTP.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -66,8 +66,8 @@ Deno.serve(async (req) => {
 
       const remaining = 2 - record.attempts
       return new Response(
-        JSON.stringify({ error: `Incorrect OTP. ${remaining > 0 ? `${remaining} attempts remaining.` : 'No attempts remaining.'}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ verified: false, error: `Incorrect OTP. ${remaining > 0 ? `${remaining} attempts remaining.` : 'No attempts remaining.'}` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -88,13 +88,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, verified: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Verify OTP error:', error)
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Verification failed' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ verified: false, error: error instanceof Error ? error.message : 'Verification failed' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })

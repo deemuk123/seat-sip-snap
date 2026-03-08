@@ -69,14 +69,22 @@ const Checkout = () => {
     setVerifying(true);
     try {
       // Verify OTP
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { phone: phoneInput, otp },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      let verifyData: any = null;
+      try {
+        const { data, error } = await supabase.functions.invoke("verify-otp", {
+          body: { phone: phoneInput, otp },
+        });
+        if (error) throw error;
+        verifyData = data;
+      } catch (verifyErr: any) {
+        // Try to parse error body for user-facing message
+        toast.error("OTP verification failed. Please try again.");
+        setVerifying(false);
+        return;
+      }
 
-      if (!data?.verified) {
-        toast.error("OTP verification failed");
+      if (!verifyData?.verified) {
+        toast.error(verifyData?.error || "OTP verification failed");
         setVerifying(false);
         return;
       }
