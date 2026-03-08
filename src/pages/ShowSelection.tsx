@@ -125,18 +125,30 @@ const ShowSelection = () => {
                 {lookupError && <p className="text-xs text-destructive">{lookupError}</p>}
                 {foundOrders && foundOrders.length > 1 && (
                   <div className="space-y-2 pt-1">
-                    <p className="text-xs font-medium text-muted-foreground">{foundOrders.length} orders found — select one:</p>
-                    {foundOrders.map((order) => (
-                      <button key={order.id} onClick={() => handleSelectOrder(order)} className="w-full text-left rounded-lg bg-secondary p-3 active:scale-[0.98] transition-transform">
-                        <div className="flex items-center justify-between">
-                          <div>
+                    <p className="text-xs font-medium text-muted-foreground">{foundOrders.length} orders found — tap to view details:</p>
+                    {foundOrders.map((order) => {
+                      const orderDate = new Date(order.createdAt);
+                      const dateStr = orderDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+                      const timeStr = orderDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+                      return (
+                        <button key={order.id} onClick={() => handleSelectOrder(order)} className="w-full text-left rounded-lg bg-secondary p-3 active:scale-[0.98] transition-transform">
+                          <div className="flex items-center justify-between mb-1">
                             <span className="text-sm font-bold text-primary tracking-wider">{order.orderCode}</span>
-                            <span className="text-xs text-muted-foreground ml-2">{order.show.movieName}</span>
+                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${
+                              order.status === "delivered" ? "bg-green-500/15 text-green-600" :
+                              order.status === "cancelled" ? "bg-destructive/15 text-destructive" :
+                              "bg-primary/15 text-primary"
+                            }`}>
+                              {order.status.replace("-", " ")}
+                            </span>
                           </div>
-                          <span className="text-xs text-muted-foreground capitalize">{order.status.replace("-", " ")}</span>
-                        </div>
-                      </button>
-                    ))}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{order.show.movieName}</span>
+                            <span>{dateStr}, {timeStr}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
