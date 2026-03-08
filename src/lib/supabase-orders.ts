@@ -39,7 +39,7 @@ async function assignScratchTier(): Promise<ScratchReward | null> {
 
     if (!config.enabled) return null;
 
-    // Check current counts against max caps
+    // Check current tier counts against max caps
     const { data: counts } = await supabase
       .from("scratch_rewards")
       .select("tier");
@@ -50,30 +50,65 @@ async function assignScratchTier(): Promise<ScratchReward | null> {
     });
 
     // Build available tiers with probabilities
-    let availableTiers: { tier: "gold" | "silver" | "bronze"; prob: number; discount: number }[] = [];
+    let availableTiers: { tier: "gold" | "silver" | "bronze"; prob: number }[] = [];
 
     if (config.gold_max === 0 || tierCounts.gold < config.gold_max) {
-      availableTiers.push({ tier: "gold", prob: config.gold_prob, discount: config.gold_discount });
+      availableTiers.push({ tier: "gold", prob: config.gold_prob });
     }
     if (config.silver_max === 0 || tierCounts.silver < config.silver_max) {
-      availableTiers.push({ tier: "silver", prob: config.silver_prob, discount: config.silver_discount });
+      availableTiers.push({ tier: "silver", prob: config.silver_prob });
     }
     if (config.bronze_max === 0 || tierCounts.bronze < config.bronze_max) {
-      availableTiers.push({ tier: "bronze", prob: config.bronze_prob, discount: config.bronze_discount });
+      availableTiers.push({ tier: "bronze", prob: config.bronze_prob });
     }
 
-    const totalProb = availableTiers.reduce((s, t) => s + t.prob, 0);
     const roll = Math.random() * 100;
-
     let cumulative = 0;
+    let selectedTier: "gold" | "silver" | "bronze" | "none" = "none";
+
     for (const t of availableTiers) {
       cumulative += t.prob;
       if (roll < cumulative) {
-        return { tier: t.tier, discountValue: t.discount };
+        selectedTier = t.tier;
+        break;
       }
     }
 
-    // "Try Again" - remaining probability
+    if (selectedTier === "none") {
+      return { tier: "none", discountValue: 0 };
+    }
+
+    // Sequential prize selection from scratch_prizes table
+    const { data: prizes } = await supabase
+      .from("scratch_prizes")
+      .select("*")
+      .eq("tier", selectedTier)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (!prizes || prizes.length === 0) {
+      // Fallback to config discount if no prizes configured
+      const fallbackDiscount =
+        selectedTier === "gold" ? config.gold_discount :
+        selectedTier === "silver" ? config.silver_discount :
+        config.bronze_discount;
+      return { tier: selectedTier, discountValue: fallbackDiscount };
+    }
+
+    // Pick the first prize that still has stock
+    for (const prize of prizes) {
+      if (prize.max_quantity === 0 || prize.used_count < prize.max_quantity) {
+        // Increment used_count
+        await supabase
+          .from("scratch_prizes")
+          .update({ used_count: prize.used_count + 1 })
+          .eq("id", prize.id);
+
+        return { tier: selectedTier, discountValue: prize.discount_value };
+      }
+    }
+
+    // All prizes for this tier exhausted → "Try Again"
     return { tier: "none", discountValue: 0 };
   } catch (err) {
     console.error("Scratch tier assignment failed:", err);
