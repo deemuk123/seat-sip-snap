@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList, Ticket, Gift } from "lucide-react";
+import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList, Ticket, Gift, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/superadmin/UserManagement";
@@ -8,6 +8,7 @@ import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
 import OrderDetailsTable from "@/components/superadmin/OrderDetailsTable";
 import CouponsSent from "@/components/superadmin/CouponsSent";
 import PrizeManager from "@/components/superadmin/PrizeManager";
+import FlashSaleManager from "@/components/superadmin/FlashSaleManager";
 
 const SuperAdminPortal = () => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const SuperAdminPortal = () => {
           </div>
 
           <Tabs defaultValue="orders" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="orders" className="flex items-center gap-1 text-xs">
                 <ClipboardList className="w-3.5 h-3.5" /> Orders
               </TabsTrigger>
@@ -41,6 +42,9 @@ const SuperAdminPortal = () => {
               </TabsTrigger>
               <TabsTrigger value="prizes" className="flex items-center gap-1 text-xs">
                 <Gift className="w-3.5 h-3.5" /> Prizes
+              </TabsTrigger>
+              <TabsTrigger value="flash" className="flex items-center gap-1 text-xs">
+                <Zap className="w-3.5 h-3.5" /> Flash
               </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-1 text-xs">
                 <Users className="w-3.5 h-3.5" /> Users
@@ -63,6 +67,10 @@ const SuperAdminPortal = () => {
 
             <TabsContent value="prizes">
               <PrizeManager />
+            </TabsContent>
+
+            <TabsContent value="flash">
+              <FlashSaleManager />
             </TabsContent>
 
             <TabsContent value="users">

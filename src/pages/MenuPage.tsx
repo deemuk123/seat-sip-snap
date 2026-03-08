@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { MenuItem } from "@/data/mockData";
 import { fetchMenuItems } from "@/lib/supabase-orders";
 import { fetchCategories } from "@/lib/supabase-manager";
 import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
+import FlashSaleBanner, { fetchActiveFlashSales, getFlashDiscount } from "@/components/checkout/FlashSaleBanner";
 
 const MenuPage = () => {
   const navigate = useNavigate();
@@ -15,11 +16,13 @@ const MenuPage = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuCategories, setMenuCategories] = useState<string[]>(["All"]);
   const [loading, setLoading] = useState(true);
+  const [flashSales, setFlashSales] = useState<Awaited<ReturnType<typeof fetchActiveFlashSales>>>([]);
 
   useEffect(() => {
-    Promise.all([fetchMenuItems(), fetchCategories()]).then(([items, cats]) => {
+    Promise.all([fetchMenuItems(), fetchCategories(), fetchActiveFlashSales()]).then(([items, cats, sales]) => {
       setMenuItems(items);
       setMenuCategories(["All", ...cats.map(c => c.name)]);
+      setFlashSales(sales);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -73,8 +76,9 @@ const MenuPage = () => {
         </div>
       </div>
 
-      {/* Interval Boost Banner */}
-      <div className="px-4 pt-4">
+      {/* Flash Sale & Interval Boost Banners */}
+      <div className="px-4 pt-4 space-y-3">
+        <FlashSaleBanner />
         <IntervalBoostBanner />
       </div>
 
@@ -86,6 +90,8 @@ const MenuPage = () => {
           <>
             {filteredItems.map((item) => {
               const qty = getCartQuantity(item.id);
+              const flashPrice = getFlashDiscount(item.id, item.price, flashSales);
+              const isFlash = flashPrice !== null;
               return (
                 <div key={item.id} className="rounded-xl bg-card border border-border p-4">
                   <div className="flex gap-4">
@@ -105,10 +111,20 @@ const MenuPage = () => {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-display font-semibold text-foreground truncate">{item.name}</h3>
+                      <h3 className="font-display font-semibold text-foreground truncate">
+                        {item.name}
+                        {isFlash && (
+                          <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full align-middle">
+                            <Zap className="w-2.5 h-2.5" /> FLASH
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>
                       <div className="flex items-center justify-between mt-3">
-                        <span className="font-display font-bold text-primary text-lg">₹{item.price}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-display font-bold text-primary text-lg">₹{isFlash ? flashPrice : item.price}</span>
+                          {isFlash && <span className="text-xs text-muted-foreground line-through">₹{item.price}</span>}
+                        </div>
                         {!item.available ? (
                           <span className="text-xs font-medium text-destructive bg-destructive/10 px-3 py-1.5 rounded-full">Unavailable</span>
                         ) : qty === 0 ? (

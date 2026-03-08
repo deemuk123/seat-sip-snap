@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Minus, Plus, Trash2, Armchair, Store } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Armchair, Store, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { useState, useEffect, useCallback } from "react";
@@ -10,6 +10,7 @@ import UpsellSuggestions from "@/components/checkout/UpsellSuggestions";
 import CouponInput from "@/components/checkout/CouponInput";
 import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 import RepeatOrderButton from "@/components/checkout/RepeatOrderButton";
+import { fetchActiveFlashSales, getFlashDiscount } from "@/components/checkout/FlashSaleBanner";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -28,8 +29,18 @@ const Checkout = () => {
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
+  const [flashSales, setFlashSales] = useState<Awaited<ReturnType<typeof fetchActiveFlashSales>>>([]);
 
-  const finalTotal = Math.max(0, cartTotal - discount);
+  useEffect(() => { fetchActiveFlashSales().then(setFlashSales); }, []);
+
+  // Calculate flash sale savings
+  const flashSavings = cart.reduce((total, item) => {
+    const flashPrice = getFlashDiscount(item.id, item.price, flashSales);
+    if (flashPrice !== null) return total + (item.price - flashPrice) * item.quantity;
+    return total;
+  }, 0);
+
+  const finalTotal = Math.max(0, cartTotal - discount - flashSavings);
 
   // Cooldown timer
   useEffect(() => {
@@ -164,8 +175,25 @@ const Checkout = () => {
         {cart.map((item) => (
           <motion.div key={item.id} layout className="rounded-xl bg-card border border-border p-4 flex items-center gap-4">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground text-sm truncate">{item.name}</h3>
-              <p className="text-primary font-bold text-sm mt-1">₹{item.price * item.quantity}</p>
+              <h3 className="font-semibold text-foreground text-sm truncate">
+                {item.name}
+                {getFlashDiscount(item.id, item.price, flashSales) !== null && (
+                  <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full align-middle">
+                    <Zap className="w-2.5 h-2.5" /> FLASH
+                  </span>
+                )}
+              </h3>
+              {(() => {
+                const fp = getFlashDiscount(item.id, item.price, flashSales);
+                return fp !== null ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-primary font-bold text-sm">₹{fp * item.quantity}</span>
+                    <span className="text-xs text-muted-foreground line-through">₹{item.price * item.quantity}</span>
+                  </div>
+                ) : (
+                  <p className="text-primary font-bold text-sm mt-1">₹{item.price * item.quantity}</p>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
@@ -198,6 +226,11 @@ const Checkout = () => {
         {discount > 0 && (
           <div className="flex justify-between text-sm text-primary mb-1">
             <span>Discount ({appliedCoupon})</span><span>-₹{discount}</span>
+          </div>
+        )}
+        {flashSavings > 0 && (
+          <div className="flex justify-between text-sm text-primary mb-1">
+            <span>⚡ Flash Sale</span><span>-₹{flashSavings}</span>
           </div>
         )}
         <div className="flex justify-between text-lg font-bold font-display text-foreground border-t border-border pt-2">
