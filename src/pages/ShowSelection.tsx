@@ -226,6 +226,7 @@ const ShowSelection = () => {
           </div>
         );
       })()}
+      </div>
     </div>
   );
 };
