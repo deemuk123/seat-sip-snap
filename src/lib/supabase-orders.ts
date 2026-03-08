@@ -55,11 +55,12 @@ export async function insertOrder(params: {
   notifyNewOrder({
     orderCode,
     total: params.total,
-    itemCount: params.items.reduce((sum, i) => sum + i.quantity, 0),
+    items: params.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
     deliveryMode: params.deliveryMode,
     seatNumber: params.seatNumber,
     phone: params.phone,
     movieName: params.show.movieName,
+    showTime: params.show.showTime,
   });
 
   return {
