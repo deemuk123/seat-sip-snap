@@ -442,6 +442,8 @@ export type Database = {
           external_id: string | null
           format: string
           id: string
+          interval_end: string | null
+          interval_start: string | null
           is_active: boolean
           language: string
           movie_name: string
@@ -449,12 +451,15 @@ export type Database = {
           screen_number: number
           show_time: string
           status: string
+          total_duration_min: number | null
         }
         Insert: {
           created_at?: string
           external_id?: string | null
           format: string
           id?: string
+          interval_end?: string | null
+          interval_start?: string | null
           is_active?: boolean
           language: string
           movie_name: string
@@ -462,12 +467,15 @@ export type Database = {
           screen_number: number
           show_time: string
           status?: string
+          total_duration_min?: number | null
         }
         Update: {
           created_at?: string
           external_id?: string | null
           format?: string
           id?: string
+          interval_end?: string | null
+          interval_start?: string | null
           is_active?: boolean
           language?: string
           movie_name?: string
@@ -475,6 +483,7 @@ export type Database = {
           screen_number?: number
           show_time?: string
           status?: string
+          total_duration_min?: number | null
         }
         Relationships: []
       }
