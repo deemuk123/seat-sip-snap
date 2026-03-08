@@ -178,6 +178,42 @@ export type Database = {
         }
         Relationships: []
       }
+      flash_sales: {
+        Row: {
+          created_at: string
+          discount_type: string
+          discount_value: number
+          end_time: string
+          id: string
+          is_active: boolean
+          menu_item_ids: string[]
+          start_time: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          menu_item_ids?: string[]
+          start_time: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          menu_item_ids?: string[]
+          start_time?: string
+          title?: string
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string
