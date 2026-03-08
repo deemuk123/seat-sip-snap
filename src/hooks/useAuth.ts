@@ -20,15 +20,42 @@ export function useAuth() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid Supabase auth deadlock
           setTimeout(() => fetchRoles(session.user.id), 0);
+
+          // Log staff login
+          if (event === "SIGNED_IN") {
+            setTimeout(async () => {
+              await supabase.from("audit_logs").insert({
+                actor_id: session.user.id,
+                action: "staff_login",
+                target_type: "auth",
+                target_id: session.user.id,
+                details: { email: session.user.email },
+              });
+            }, 100);
+          }
         } else {
           setRoles([]);
         }
+
+        // Log logout
+        if (event === "SIGNED_OUT" && user) {
+          // Best-effort: user object still available from closure
+          setTimeout(async () => {
+            await supabase.from("audit_logs").insert({
+              actor_id: user.id,
+              action: "staff_logout",
+              target_type: "auth",
+              target_id: user.id,
+              details: { email: user.email },
+            });
+          }, 0);
+        }
+
         setLoading(false);
       }
     );

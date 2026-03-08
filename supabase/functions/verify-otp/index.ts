@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get latest unverified OTP for this phone
     const { data: record, error: fetchError } = await supabase
       .from('otp_verifications')
       .select('*')
@@ -45,7 +44,6 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check expiry
     if (new Date(record.expires_at) < new Date()) {
       return new Response(
         JSON.stringify({ error: 'OTP expired. Please request a new one.' }),
@@ -53,7 +51,6 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check max attempts
     if (record.attempts >= 3) {
       return new Response(
         JSON.stringify({ error: 'Maximum attempts exceeded. Please request a new OTP.' }),
@@ -61,9 +58,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify OTP
     if (record.otp_code !== otp) {
-      // Increment attempts
       await supabase
         .from('otp_verifications')
         .update({ attempts: record.attempts + 1 })
@@ -81,6 +76,15 @@ Deno.serve(async (req) => {
       .from('otp_verifications')
       .update({ verified: true })
       .eq('id', record.id)
+
+    // Audit log for OTP verification
+    await supabase.from('audit_logs').insert({
+      actor_id: '00000000-0000-0000-0000-000000000000',
+      action: 'otp_verified',
+      target_type: 'customer',
+      target_id: phone,
+      details: { phone },
+    })
 
     return new Response(
       JSON.stringify({ success: true, verified: true }),

@@ -25,6 +25,26 @@ export interface DBOrder {
   }[];
 }
 
+// ---- Audit logging helper ----
+export async function logAudit(params: {
+  action: string;
+  targetType: string;
+  targetId?: string;
+  details?: Record<string, any>;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const actorId = user?.id || "00000000-0000-0000-0000-000000000000";
+
+  await supabase.from("audit_logs").insert({
+    actor_id: actorId,
+    action: params.action,
+    target_type: params.targetType,
+    target_id: params.targetId || null,
+    details: params.details || {},
+  });
+}
+
+// ---- Orders ----
 export async function fetchAllOrders(filters?: {
   showId?: string;
   status?: OrderStatus;
@@ -68,6 +88,16 @@ export async function updateOrderStatus(
   });
 
   if (logError) throw logError;
+
+  // Audit log for cancellations and confirmations
+  if (newStatus === "cancelled" || newStatus === "delivered") {
+    await logAudit({
+      action: newStatus === "cancelled" ? "order_cancelled" : "order_delivered",
+      targetType: "order",
+      targetId: orderId,
+      details: { status: newStatus, reason: reason || null },
+    });
+  }
 }
 
 export async function verifyAndDeliverOrder(
@@ -87,13 +117,20 @@ export async function verifyAndDeliverOrder(
   return true;
 }
 
-// Menu management
+// ---- Menu management ----
 export async function updateMenuItem(
   id: string,
   updates: { name?: string; price?: number; description?: string; category?: string; available?: boolean; image_url?: string }
 ) {
   const { error } = await supabase.from("menu_items").update(updates).eq("id", id);
   if (error) throw error;
+
+  await logAudit({
+    action: "menu_item_updated",
+    targetType: "menu_item",
+    targetId: id,
+    details: updates,
+  });
 }
 
 export async function createMenuItem(item: {
@@ -104,11 +141,39 @@ export async function createMenuItem(item: {
   image_url?: string;
   available?: boolean;
 }) {
-  const { error } = await supabase.from("menu_items").insert(item);
+  const { data, error } = await supabase.from("menu_items").insert(item).select().single();
   if (error) throw error;
+
+  await logAudit({
+    action: "menu_item_created",
+    targetType: "menu_item",
+    targetId: data?.id,
+    details: { name: item.name, price: item.price, category: item.category },
+  });
 }
 
 export async function deleteMenuItem(id: string) {
+  // Fetch name before deleting for audit
+  const { data: item } = await supabase.from("menu_items").select("name").eq("id", id).single();
   const { error } = await supabase.from("menu_items").delete().eq("id", id);
   if (error) throw error;
+
+  await logAudit({
+    action: "menu_item_deleted",
+    targetType: "menu_item",
+    targetId: id,
+    details: { name: item?.name || "unknown" },
+  });
+}
+
+// ---- Daily summaries ----
+export async function fetchDailySummaries(limit = 30) {
+  const { data, error } = await supabase
+    .from("daily_summaries")
+    .select("*")
+    .order("summary_date", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
 }
