@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateOrderCode } from "@/data/mockData";
 import type { Show, CartItem, Order } from "@/data/mockData";
+import { notifyNewOrder } from "@/lib/whatsapp-notify";
 
 export async function insertOrder(params: {
   show: Show;
@@ -48,6 +49,17 @@ export async function insertOrder(params: {
   await supabase.from("order_status_logs").insert({
     order_id: orderRow.id,
     status: "received",
+  });
+
+  // Send WhatsApp notification (fire and forget)
+  notifyNewOrder({
+    orderCode,
+    total: params.total,
+    itemCount: params.items.reduce((sum, i) => sum + i.quantity, 0),
+    deliveryMode: params.deliveryMode,
+    seatNumber: params.seatNumber,
+    phone: params.phone,
+    movieName: params.show.movieName,
   });
 
   return {
