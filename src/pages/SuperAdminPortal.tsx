@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList } from "lucide-react";
+import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList, Ticket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/superadmin/UserManagement";
 import AuditLogs from "@/components/superadmin/AuditLogs";
 import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
 import OrderDetailsTable from "@/components/superadmin/OrderDetailsTable";
+import CouponsSent from "@/components/superadmin/CouponsSent";
 
 const SuperAdminPortal = () => {
   const navigate = useNavigate();
