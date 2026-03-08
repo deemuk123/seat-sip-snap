@@ -33,6 +33,7 @@ export default function PrizeManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [tryAgainWeight, setTryAgainWeight] = useState(20);
 
   // New prize form
   const [newTier, setNewTier] = useState<string>("gold");
@@ -51,6 +52,7 @@ export default function PrizeManager() {
     try {
       const val = await fetchSetting("scratch_card_config");
       setIsEnabled(val?.enabled ?? false);
+      setTryAgainWeight(val?.try_again_weight ?? 20);
     } catch {}
   };
 
@@ -67,9 +69,15 @@ export default function PrizeManager() {
 
   const toggleEnabled = async (v: boolean) => {
     const current = await fetchSetting("scratch_card_config");
-    await upsertSetting("scratch_card_config", { ...(current || {}), enabled: v });
+    await upsertSetting("scratch_card_config", { ...(current || {}), enabled: v, try_again_weight: tryAgainWeight });
     setIsEnabled(v);
     toast.success(v ? "Scratch cards enabled" : "Scratch cards disabled");
+  };
+
+  const saveTryAgainWeight = async (w: number) => {
+    setTryAgainWeight(w);
+    const current = await fetchSetting("scratch_card_config");
+    await upsertSetting("scratch_card_config", { ...(current || {}), try_again_weight: w });
   };
 
   const addPrize = async () => {
@@ -129,9 +137,10 @@ export default function PrizeManager() {
     }
   };
 
-  // Auto-calculate tier probabilities from prize weights
+  // Auto-calculate tier probabilities from prize weights + try again weight
   const activePrizes = prizes.filter((p) => p.is_active && (p.max_quantity === 0 || p.used_count < p.max_quantity));
-  const totalWeight = activePrizes.reduce((s, p) => s + (p.probability_weight || 1), 0);
+  const prizeWeight = activePrizes.reduce((s, p) => s + (p.probability_weight || 1), 0);
+  const grandTotal = prizeWeight + tryAgainWeight;
 
   const tierProbs = TIER_OPTIONS.map((tier) => {
     const tierWeight = activePrizes
@@ -140,11 +149,11 @@ export default function PrizeManager() {
     return {
       tier,
       weight: tierWeight,
-      pct: totalWeight > 0 ? Math.round((tierWeight / totalWeight) * 100) : 0,
+      pct: grandTotal > 0 ? Math.round((tierWeight / grandTotal) * 100) : 0,
     };
   });
 
-  const tryAgainPct = totalWeight > 0 ? Math.max(0, 100 - tierProbs.reduce((s, t) => s + t.pct, 0)) : 100;
+  const tryAgainPct = grandTotal > 0 ? Math.round((tryAgainWeight / grandTotal) * 100) : 100;
 
   const grouped = TIER_OPTIONS.map((tier) => ({
     tier,
@@ -179,20 +188,31 @@ export default function PrizeManager() {
           {isEnabled && (
             <>
               <p className="text-[10px] text-muted-foreground mb-2">
-                Probabilities auto-calculated from active prize weights below:
+                Probabilities auto-calculated from prize weights + Try Again weight:
               </p>
               <div className="grid grid-cols-4 gap-2">
                 {[
                   { label: "🥇 Gold", value: tierProbs[0].pct, color: "bg-yellow-500/20 text-yellow-700" },
                   { label: "🥈 Silver", value: tierProbs[1].pct, color: "bg-gray-300/30 text-gray-600" },
                   { label: "🥉 Bronze", value: tierProbs[2].pct, color: "bg-orange-400/20 text-orange-700" },
-                  { label: "🔄 Try Again", value: activePrizes.length === 0 ? 100 : tryAgainPct, color: "bg-muted text-muted-foreground" },
+                  { label: "🔄 Try Again", value: tryAgainPct, color: "bg-muted text-muted-foreground" },
                 ].map((t) => (
                   <div key={t.label} className={`rounded-md px-2 py-1.5 text-center ${t.color}`}>
                     <p className="text-[10px]">{t.label}</p>
                     <p className="text-sm font-bold">{t.value}%</p>
                   </div>
                 ))}
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <Label className="text-xs whitespace-nowrap">🔄 Try Again Weight:</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={tryAgainWeight}
+                  onChange={(e) => saveTryAgainWeight(Number(e.target.value) || 0)}
+                  className="h-8 text-xs w-24"
+                />
+                <p className="text-[10px] text-muted-foreground">Higher = more "Try Again" outcomes</p>
               </div>
               {activePrizes.length === 0 && (
                 <p className="text-[10px] text-destructive mt-2 font-medium">
@@ -337,7 +357,7 @@ export default function PrizeManager() {
                           <TableCell className="text-xs font-mono">{prize.probability_weight}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-[10px]">
-                              {totalWeight > 0 ? `${Math.round((prize.probability_weight / totalWeight) * 100)}%` : "0%"}
+                              {grandTotal > 0 ? `${Math.round((prize.probability_weight / grandTotal) * 100)}%` : "0%"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs">
