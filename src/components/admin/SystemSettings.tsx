@@ -103,24 +103,10 @@ export default function SystemSettings() {
     setSaving(false);
   };
 
-  const handleSaveScratch = async () => {
-    setSavingScratch(true);
-    try {
-      await upsertSetting("scratch_card_config", scratch);
-      toast.success("Scratch card settings saved");
-    } catch { toast.error("Failed to save scratch card settings"); }
-    setSavingScratch(false);
-  };
 
   const update = <K extends keyof SystemConfig>(key: K, value: SystemConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
-
-  const updateScratch = <K extends keyof ScratchCardConfig>(key: K, value: ScratchCardConfig[K]) => {
-    setScratch(prev => ({ ...prev, [key]: value }));
-  };
-
-  const tryAgainProb = Math.max(0, 100 - scratch.gold_prob - scratch.silver_prob - scratch.bronze_prob);
 
   const handleSaveApiSettings = async () => {
     setSavingApi(true);
