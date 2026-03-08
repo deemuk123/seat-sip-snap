@@ -49,7 +49,7 @@ export default function MenuManager() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: "", price: "", description: "", category: "Popcorn", image_url: "" });
+    setForm({ name: "", price: "", description: "", category: "Popcorn", image_url: "", available_from: "", available_until: "" });
     setDialogOpen(true);
   };
 
