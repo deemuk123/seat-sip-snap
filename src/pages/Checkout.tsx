@@ -81,19 +81,23 @@ const Checkout = () => {
         return;
       }
 
-      // Fraud check
-      const { data: fraudData } = await supabase.functions.invoke("check-fraud", {
-        body: {
-          phone: phoneInput,
-          show_id: selectedShow?.id,
-          seat_number: seatNumber || null,
-        },
-      });
+      // Fraud check (non-blocking on error)
+      try {
+        const { data: fraudData } = await supabase.functions.invoke("check-fraud", {
+          body: {
+            phone: phoneInput,
+            show_id: selectedShow?.id,
+            seat_number: seatNumber || null,
+          },
+        });
 
-      if (fraudData && !fraudData.allowed) {
-        toast.error(fraudData.reason || "Order not allowed");
-        setVerifying(false);
-        return;
+        if (fraudData && !fraudData.allowed) {
+          toast.error(fraudData.reason || "Order not allowed");
+          setVerifying(false);
+          return;
+        }
+      } catch (fraudErr) {
+        console.warn("Fraud check skipped:", fraudErr);
       }
 
       // Place order
