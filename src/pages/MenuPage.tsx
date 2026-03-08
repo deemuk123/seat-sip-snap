@@ -129,7 +129,7 @@ const MenuPage = () => {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </AnimatePresence>
