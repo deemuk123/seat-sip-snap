@@ -76,8 +76,9 @@ const MenuPage = () => {
         </div>
       </div>
 
-      {/* Interval Boost Banner */}
-      <div className="px-4 pt-4">
+      {/* Flash Sale & Interval Boost Banners */}
+      <div className="px-4 pt-4 space-y-3">
+        <FlashSaleBanner />
         <IntervalBoostBanner />
       </div>
 
