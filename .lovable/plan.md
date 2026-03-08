@@ -1,77 +1,47 @@
 
 
-# Scratch Card Reward System with Admin Controls
+# Fix sync-shows Edge Function: Missing Database Schema
 
-## Overview
+## Root Cause
 
-After placing an order, customers get an interactive scratch card (Gold/Silver/Bronze or "Try Again"). The scratch card feature and tier limits are fully configurable from the Admin Settings panel. When the order is delivered, the coupon code is sent via WhatsApp/SMS.
+Two database schema elements are missing, causing the sync-shows function to fail:
 
-## Database
+1. **`api_settings` table does not exist** -- The edge function queries `api_settings` for the API URL and sync status, but this table was never created. This is why you get "API URL not configured" (400) or 500 errors.
 
-**New table: `scratch_rewards`**
-- `id` uuid PK
-- `order_id` uuid (references orders)
-- `tier` text (gold/silver/bronze/none)
-- `discount_value` numeric
-- `coupon_code` text nullable (generated on delivery)
-- `sent` boolean default false
-- `scratched` boolean default false
-- `created_at` timestamptz default now()
+2. **`external_id` column missing from `shows` table** -- The edge function references `shows.external_id` to match API records to local rows, but the column doesn't exist in the schema.
 
-RLS: public insert + select (anonymous orders), staff update.
+## Plan
 
-## Admin Settings (SystemSettings.tsx)
+### 1. Database migration -- Create `api_settings` table and add `external_id` to `shows`
 
-Add a new "Scratch Card Rewards" card with:
-- **Enable/disable** scratch cards (toggle)
-- **Max Gold cards** (number input) — total gold rewards that can be given (0 = unlimited)
-- **Max Silver cards** (number input)
-- **Max Bronze cards** (number input)
-- **Gold discount %**, **Silver discount %**, **Bronze discount %** (defaults: 30/15/5)
-- **Gold probability %**, **Silver probability %**, **Bronze probability %** (defaults: 10/30/60)
-- **"Try Again" included** — remaining probability auto-calculated (e.g., if gold+silver+bronze = 80%, try again = 20%)
+```sql
+-- api_settings table for Show API configuration
+CREATE TABLE public.api_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  api_url TEXT NOT NULL DEFAULT '',
+  sync_interval_mins INTEGER NOT NULL DEFAULT 30,
+  last_sync_at TIMESTAMPTZ,
+  last_sync_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
-Stored in `settings` table under key `scratch_card_config`.
+ALTER TABLE public.api_settings ENABLE ROW LEVEL SECURITY;
 
-## Tier Assignment (supabase-orders.ts)
+-- Admin/superadmin can manage, public can read
+CREATE POLICY "API settings publicly readable" ON public.api_settings FOR SELECT USING (true);
+CREATE POLICY "Admin can insert api_settings" ON public.api_settings FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
+CREATE POLICY "Admin can update api_settings" ON public.api_settings FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
 
-After `insertOrder`:
-1. Fetch `scratch_card_config` from settings
-2. If disabled, skip
-3. Check current counts of each tier in `scratch_rewards` (today or all-time based on preference)
-4. Roll random number, assign tier respecting max caps (if gold maxed out, redistribute to lower tiers or "try again")
-5. Insert `scratch_rewards` row
-6. Return tier info alongside the order
+-- Add external_id to shows for API sync matching
+ALTER TABLE public.shows ADD COLUMN external_id TEXT;
+CREATE INDEX idx_shows_external_id ON public.shows(external_id);
+```
 
-## Scratch Card UI (ScratchCard.tsx)
+### 2. No code changes needed
+The edge function and SystemSettings UI already reference these correctly -- they just need the tables to exist.
 
-- Canvas-based scratch overlay with metallic gradient (gold/silver/bronze themed)
-- User drags finger/mouse to reveal prize underneath
-- **"Try Again"** outcome shows "Better luck next time!" message
-- Prize reveal shows discount amount + message: "Your coupon will be sent via WhatsApp when your order is delivered"
-- Appears on Confirmation page between order code and order details
-
-## Reward Delivery (send-reward edge function)
-
-Triggered when manager marks order as "delivered" (from `verifyAndDeliverOrder`):
-1. Look up `scratch_rewards` for the order
-2. If tier is "none" (try again), skip
-3. Generate unique coupon code (e.g., `GOLD-XXXX`)
-4. Insert into `coupons` table (single use, 7-day expiry)
-5. Update `scratch_rewards` with coupon_code + sent=true
-6. Send WhatsApp message to customer's phone with the coupon code
-
-## Files to Create/Edit
-
-| File | Action |
-|------|--------|
-| DB migration | Create `scratch_rewards` table |
-| `src/components/checkout/ScratchCard.tsx` | Create — interactive canvas scratch card |
-| `src/pages/Confirmation.tsx` | Edit — show scratch card |
-| `src/lib/supabase-orders.ts` | Edit — assign tier + insert reward row |
-| `src/context/AppContext.tsx` | Edit — add scratchReward to order state |
-| `src/components/admin/SystemSettings.tsx` | Edit — add scratch card config section |
-| `src/lib/supabase-manager.ts` | Edit — invoke send-reward on delivery |
-| `supabase/functions/send-reward/index.ts` | Create — generate coupon + WhatsApp send |
-| `supabase/config.toml` | Add `[functions.send-reward]` with `verify_jwt = false` |
+### Files modified
+- New migration SQL (database migration tool)
 

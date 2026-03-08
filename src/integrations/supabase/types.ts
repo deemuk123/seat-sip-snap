@@ -415,6 +415,53 @@ export type Database = {
         }
         Relationships: []
       }
+      scratch_rewards: {
+        Row: {
+          coupon_code: string | null
+          coupon_id: string | null
+          created_at: string
+          discount_type: string
+          discount_value: number
+          id: string
+          order_id: string
+          scratched: boolean
+          sent: boolean
+          tier: string
+        }
+        Insert: {
+          coupon_code?: string | null
+          coupon_id?: string | null
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          order_id: string
+          scratched?: boolean
+          sent?: boolean
+          tier?: string
+        }
+        Update: {
+          coupon_code?: string | null
+          coupon_id?: string | null
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          order_id?: string
+          scratched?: boolean
+          sent?: boolean
+          tier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_rewards_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           id: string

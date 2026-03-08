@@ -1,7 +1,85 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateOrderCode } from "@/data/mockData";
-import type { Show, CartItem, Order } from "@/data/mockData";
+import type { Show, CartItem, Order, ScratchReward } from "@/data/mockData";
 import { notifyNewOrder } from "@/lib/whatsapp-notify";
+import { fetchSetting } from "@/lib/supabase-admin";
+
+interface ScratchCardConfig {
+  enabled: boolean;
+  gold_prob: number;
+  silver_prob: number;
+  bronze_prob: number;
+  gold_discount: number;
+  silver_discount: number;
+  bronze_discount: number;
+  gold_max: number;
+  silver_max: number;
+  bronze_max: number;
+}
+
+const DEFAULT_SCRATCH_CONFIG: ScratchCardConfig = {
+  enabled: false,
+  gold_prob: 10,
+  silver_prob: 30,
+  bronze_prob: 60,
+  gold_discount: 30,
+  silver_discount: 15,
+  bronze_discount: 5,
+  gold_max: 0,
+  silver_max: 0,
+  bronze_max: 0,
+};
+
+async function assignScratchTier(): Promise<ScratchReward | null> {
+  try {
+    const configVal = await fetchSetting("scratch_card_config");
+    const config: ScratchCardConfig = configVal
+      ? { ...DEFAULT_SCRATCH_CONFIG, ...configVal }
+      : DEFAULT_SCRATCH_CONFIG;
+
+    if (!config.enabled) return null;
+
+    // Check current counts against max caps
+    const { data: counts } = await supabase
+      .from("scratch_rewards")
+      .select("tier");
+
+    const tierCounts = { gold: 0, silver: 0, bronze: 0 };
+    (counts || []).forEach((r: any) => {
+      if (r.tier in tierCounts) tierCounts[r.tier as keyof typeof tierCounts]++;
+    });
+
+    // Build available tiers with probabilities
+    let availableTiers: { tier: "gold" | "silver" | "bronze"; prob: number; discount: number }[] = [];
+
+    if (config.gold_max === 0 || tierCounts.gold < config.gold_max) {
+      availableTiers.push({ tier: "gold", prob: config.gold_prob, discount: config.gold_discount });
+    }
+    if (config.silver_max === 0 || tierCounts.silver < config.silver_max) {
+      availableTiers.push({ tier: "silver", prob: config.silver_prob, discount: config.silver_discount });
+    }
+    if (config.bronze_max === 0 || tierCounts.bronze < config.bronze_max) {
+      availableTiers.push({ tier: "bronze", prob: config.bronze_prob, discount: config.bronze_discount });
+    }
+
+    const totalProb = availableTiers.reduce((s, t) => s + t.prob, 0);
+    const roll = Math.random() * 100;
+
+    let cumulative = 0;
+    for (const t of availableTiers) {
+      cumulative += t.prob;
+      if (roll < cumulative) {
+        return { tier: t.tier, discountValue: t.discount };
+      }
+    }
+
+    // "Try Again" - remaining probability
+    return { tier: "none", discountValue: 0 };
+  } catch (err) {
+    console.error("Scratch tier assignment failed:", err);
+    return null;
+  }
+}
 
 export async function insertOrder(params: {
   show: Show;
@@ -51,6 +129,22 @@ export async function insertOrder(params: {
     status: "received",
   });
 
+  // Assign scratch card reward
+  let scratchReward: ScratchReward | null = null;
+  try {
+    scratchReward = await assignScratchTier();
+    if (scratchReward) {
+      await supabase.from("scratch_rewards").insert({
+        order_id: orderRow.id,
+        tier: scratchReward.tier,
+        discount_value: scratchReward.discountValue,
+        discount_type: "percentage",
+      });
+    }
+  } catch (err) {
+    console.error("Scratch reward insert failed:", err);
+  }
+
   // Send WhatsApp notification (fire and forget)
   notifyNewOrder({
     orderCode,
@@ -75,6 +169,7 @@ export async function insertOrder(params: {
     total: params.total,
     createdAt: orderRow.created_at,
     estimatedDelivery: orderRow.estimated_delivery || "8-12 mins",
+    scratchReward: scratchReward || undefined,
   };
 }
 
