@@ -29,8 +29,18 @@ const Checkout = () => {
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
+  const [flashSales, setFlashSales] = useState<Awaited<ReturnType<typeof fetchActiveFlashSales>>>([]);
 
-  const finalTotal = Math.max(0, cartTotal - discount);
+  useEffect(() => { fetchActiveFlashSales().then(setFlashSales); }, []);
+
+  // Calculate flash sale savings
+  const flashSavings = cart.reduce((total, item) => {
+    const flashPrice = getFlashDiscount(item.id, item.price, flashSales);
+    if (flashPrice !== null) return total + (item.price - flashPrice) * item.quantity;
+    return total;
+  }, 0);
+
+  const finalTotal = Math.max(0, cartTotal - discount - flashSavings);
 
   // Cooldown timer
   useEffect(() => {
