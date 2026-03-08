@@ -132,7 +132,7 @@ const MenuPage = () => {
                 </div>
               );
             })}
-          </AnimatePresence>
+          </>
         )}
       </div>
 
