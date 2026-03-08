@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { fetchMenuItems } from "@/lib/supabase-orders";
 import { createMenuItem, updateMenuItem, deleteMenuItem } from "@/lib/supabase-manager";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface MenuItemData {
@@ -30,6 +31,8 @@ export default function MenuManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MenuItemData | null>(null);
   const [form, setForm] = useState({ name: "", price: "", description: "", category: "Popcorn", image_url: "" });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -52,6 +55,25 @@ export default function MenuManager() {
     setEditing(item);
     setForm({ name: item.name, price: String(item.price), description: item.description, category: item.category, image_url: item.imageUrl });
     setDialogOpen(true);
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${crypto.randomUUID()}.${ext}`;
+
+    const { error } = await supabase.storage.from("menu-images").upload(path, file);
+    if (error) { toast.error("Upload failed"); setUploading(false); return; }
+
+    const { data: urlData } = supabase.storage.from("menu-images").getPublicUrl(path);
+    setForm(f => ({ ...f, image_url: urlData.publicUrl }));
+    setUploading(false);
+    toast.success("Image uploaded");
   };
 
   const handleSave = async () => {
@@ -98,11 +120,22 @@ export default function MenuManager() {
         <div className="space-y-2">
           {items.map((item) => (
             <motion.div key={item.id} layout className="rounded-lg bg-card border border-border p-3 flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-foreground truncate">{item.name}</span>
-                  <span className="text-xs text-muted-foreground">₹{item.price}</span>
-                  <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{item.category}</span>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {item.imageUrl ? (
+                  <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 bg-secondary">
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                    <Image className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-foreground truncate">{item.name}</span>
+                    <span className="text-xs text-muted-foreground">₹{item.price}</span>
+                    <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{item.category}</span>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -130,7 +163,23 @@ export default function MenuManager() {
               </Select>
             </div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
-            <div><Label>Image URL</Label><Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://…" /></div>
+            <div>
+              <Label>Image</Label>
+              <div className="space-y-2">
+                {form.image_url && (
+                  <div className="w-full h-32 rounded-lg overflow-hidden bg-secondary">
+                    <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                    <Upload className="w-3.5 h-3.5 mr-1" />{uploading ? "Uploading…" : "Upload"}
+                  </Button>
+                  <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="Or paste URL…" className="flex-1 text-xs" />
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={handleSave}>{editing ? "Update" : "Create"}</Button>

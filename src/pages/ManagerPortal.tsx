@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, LayoutDashboard, ClipboardList, UtensilsCrossed, RefreshCw, Clock } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ClipboardList, UtensilsCrossed, RefreshCw, Clock, QrCode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import OrderCard from "@/components/manager/OrderCard";
 import VerifyDeliverDialog from "@/components/manager/VerifyDeliverDialog";
 import CancelOrderDialog from "@/components/manager/CancelOrderDialog";
 import MenuManager from "@/components/manager/MenuManager";
+import QRGenerator from "@/components/manager/QRGenerator";
 import SLATracker from "@/components/manager/SLATracker";
 import { toast } from "sonner";
 
@@ -118,7 +119,7 @@ const ManagerPortal = () => {
           </div>
 
           <Tabs defaultValue="orders" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="orders" className="flex items-center gap-1.5">
                 <ClipboardList className="w-4 h-4" /> Orders
               </TabsTrigger>
@@ -127,6 +128,9 @@ const ManagerPortal = () => {
               </TabsTrigger>
               <TabsTrigger value="menu" className="flex items-center gap-1.5">
                 <UtensilsCrossed className="w-4 h-4" /> Menu
+              </TabsTrigger>
+              <TabsTrigger value="qr" className="flex items-center gap-1.5">
+                <QrCode className="w-4 h-4" /> QR
               </TabsTrigger>
             </TabsList>
 
@@ -184,6 +188,10 @@ const ManagerPortal = () => {
 
             <TabsContent value="menu">
               <MenuManager />
+            </TabsContent>
+
+            <TabsContent value="qr">
+              <QRGenerator />
             </TabsContent>
           </Tabs>
         </motion.div>
