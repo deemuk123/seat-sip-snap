@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Users, ScrollText } from "lucide-react";
+import { ArrowLeft, Shield, Users, ScrollText, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/superadmin/UserManagement";
 import AuditLogs from "@/components/superadmin/AuditLogs";
+import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
 
 const SuperAdminPortal = () => {
   const navigate = useNavigate();
@@ -28,12 +29,15 @@ const SuperAdminPortal = () => {
           </div>
 
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="users" className="flex items-center gap-1.5">
                 <Users className="w-4 h-4" /> Users
               </TabsTrigger>
               <TabsTrigger value="audit" className="flex items-center gap-1.5">
-                <ScrollText className="w-4 h-4" /> Audit Logs
+                <ScrollText className="w-4 h-4" /> Audit
+              </TabsTrigger>
+              <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
+                <MessageCircle className="w-4 h-4" /> WhatsApp
               </TabsTrigger>
             </TabsList>
 
@@ -43,6 +47,10 @@ const SuperAdminPortal = () => {
 
             <TabsContent value="audit">
               <AuditLogs />
+            </TabsContent>
+
+            <TabsContent value="whatsapp">
+              <WhatsAppSettings />
             </TabsContent>
           </Tabs>
         </motion.div>

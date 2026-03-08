@@ -14,6 +14,7 @@ import CancelOrderDialog from "@/components/manager/CancelOrderDialog";
 import MenuManager from "@/components/manager/MenuManager";
 import QRGenerator from "@/components/manager/QRGenerator";
 import SLATracker from "@/components/manager/SLATracker";
+import { useOrderSound } from "@/hooks/useOrderSound";
 import { toast } from "sonner";
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -46,6 +47,9 @@ const ManagerPortal = () => {
 
   const [verifyOrderId, setVerifyOrderId] = useState<string | null>(null);
   const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+
+  // Sound notifications for new / overdue orders
+  useOrderSound({ orders });
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
