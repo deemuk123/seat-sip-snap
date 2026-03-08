@@ -124,6 +124,47 @@ Deno.serve(async (req) => {
 
     console.log(`Daily summary for ${targetDate}: ${JSON.stringify(summary)}`)
 
+    // Send WhatsApp daily summary
+    try {
+      const wahaApiUrl = (Deno.env.get('WAHA_API_URL') || 'https://devlikeaprowaha-production-4380.up.railway.app').replace(/\/+$/, '')
+      const wahaApiKey = Deno.env.get('WAHA_API_KEY')
+      const wahaChatId = Deno.env.get('WAHA_CHAT_ID')
+      const chatId = (wahaChatId && wahaChatId !== 'default') ? wahaChatId : '120363422396487980@g.us'
+
+      if (wahaApiKey) {
+        const whatsappText = [
+          `📊 *Daily Summary — ${targetDate}*`,
+          ``,
+          `📦 Total Orders: ${summary.total_orders}`,
+          `✅ Delivered: ${summary.confirmed_orders}`,
+          `💰 Revenue: ₹${summary.confirmed_sales.toFixed(2)}`,
+          `❌ Cancelled: ${summary.cancelled_orders}`,
+          `💸 Cancelled Amount: ₹${summary.cancelled_amount.toFixed(2)}`,
+        ].join('\n')
+
+        const waResp = await fetch(`${wahaApiUrl}/api/sendText`, {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'X-Api-Key': wahaApiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId,
+            reply_to: null,
+            text: whatsappText,
+            linkPreview: false,
+            linkPreviewHighQuality: false,
+            session: 'default',
+          }),
+        })
+        const waText = await waResp.text()
+        console.log('WhatsApp daily summary sent:', waResp.status, waText.substring(0, 200))
+      }
+    } catch (waErr) {
+      console.error('WhatsApp daily summary error:', waErr)
+    }
+
     return new Response(
       JSON.stringify({ success: true, summary }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
