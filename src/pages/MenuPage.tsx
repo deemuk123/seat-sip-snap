@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { menuCategories, MenuItem } from "@/data/mockData";
+import { MenuItem } from "@/data/mockData";
+import { fetchMenuItems } from "@/lib/supabase-orders";
+import { fetchCategories } from "@/lib/supabase-manager";
 import { fetchMenuItems } from "@/lib/supabase-orders";
 import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 
