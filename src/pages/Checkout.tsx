@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Minus, Plus, Trash2, Armchair, Store } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Armchair, Store, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { useState, useEffect, useCallback } from "react";
@@ -10,6 +10,7 @@ import UpsellSuggestions from "@/components/checkout/UpsellSuggestions";
 import CouponInput from "@/components/checkout/CouponInput";
 import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 import RepeatOrderButton from "@/components/checkout/RepeatOrderButton";
+import { fetchActiveFlashSales, getFlashDiscount } from "@/components/checkout/FlashSaleBanner";
 
 const Checkout = () => {
   const navigate = useNavigate();
