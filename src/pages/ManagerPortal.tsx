@@ -85,22 +85,25 @@ const ManagerPortal = () => {
     const noShowOrders: DBOrder[] = [];
 
     for (const order of orders) {
-      const showId = order.show_id || "no-show";
-      if (showId === "no-show") {
+      const snapshot = order.show_snapshot as any;
+      const groupKey = snapshot?.movieName && snapshot?.showTime
+        ? `${snapshot.movieName}::${snapshot.showTime}`
+        : order.show_id || "no-show";
+
+      if (groupKey === "no-show") {
         noShowOrders.push(order);
       } else {
-        if (!groupMap.has(showId)) groupMap.set(showId, []);
-        groupMap.get(showId)!.push(order);
+        if (!groupMap.has(groupKey)) groupMap.set(groupKey, []);
+        groupMap.get(groupKey)!.push(order);
       }
     }
 
     const groups: ShowGroup[] = [];
 
-    for (const [showId, showOrders] of groupMap) {
+    for (const [groupKey, showOrders] of groupMap) {
       const snapshot = showOrders[0]?.show_snapshot as any;
-      const showInfo = shows.find(s => s.id === showId);
-      const showName = showInfo?.movieName || snapshot?.movieName || "Unknown Show";
-      const showTime = showInfo?.showTime || snapshot?.showTime || "";
+      const showName = snapshot?.movieName || "Unknown Show";
+      const showTime = snapshot?.showTime || "";
 
       const pendingCount = showOrders.filter(o => o.status !== "delivered" && o.status !== "cancelled").length;
       const overdueCount = showOrders.filter(o => {
@@ -108,7 +111,7 @@ const ManagerPortal = () => {
         return Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000) >= SLA_WARN_MINS;
       }).length;
 
-      groups.push({ showId, showName, showTime, orders: showOrders, pendingCount, overdueCount });
+      groups.push({ showId: groupKey, showName, showTime, orders: showOrders, pendingCount, overdueCount });
     }
 
     if (noShowOrders.length > 0) {
@@ -122,7 +125,6 @@ const ManagerPortal = () => {
       });
     }
 
-    // Sort: shows with overdue orders first, then by pending count descending
     groups.sort((a, b) => {
       if (a.overdueCount !== b.overdueCount) return b.overdueCount - a.overdueCount;
       if (a.pendingCount !== b.pendingCount) return b.pendingCount - a.pendingCount;
@@ -130,7 +132,7 @@ const ManagerPortal = () => {
     });
 
     return groups;
-  }, [orders, shows]);
+  }, [orders]);
 
   // Auto-expand shows with pending orders
   useEffect(() => {
