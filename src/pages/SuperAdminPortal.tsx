@@ -33,7 +33,7 @@ const SuperAdminPortal = () => {
           </div>
 
           <Tabs defaultValue="orders" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="orders" className="flex items-center gap-1 text-xs">
                 <ClipboardList className="w-3.5 h-3.5" /> Orders
               </TabsTrigger>
@@ -42,6 +42,9 @@ const SuperAdminPortal = () => {
               </TabsTrigger>
               <TabsTrigger value="prizes" className="flex items-center gap-1 text-xs">
                 <Gift className="w-3.5 h-3.5" /> Prizes
+              </TabsTrigger>
+              <TabsTrigger value="flash" className="flex items-center gap-1 text-xs">
+                <Zap className="w-3.5 h-3.5" /> Flash
               </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-1 text-xs">
                 <Users className="w-3.5 h-3.5" /> Users
