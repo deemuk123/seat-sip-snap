@@ -1,33 +1,47 @@
 
 
-# Super Admin Coupons Tab + WhatsApp Fix
+# Fix sync-shows Edge Function: Missing Database Schema
 
-## Changes
+## Root Cause
 
-### 1. Fix WhatsApp phone number in `send-reward` edge function
-Currently uses `+91` (India). Change to `+977` (Nepal):
-- Line 114: Strip `+977` prefix instead of `+91`
-- Line 115: Use `977${phone}@c.us` instead of `91${phone}@c.us`
+Two database schema elements are missing, causing the sync-shows function to fail:
 
-### 2. New "Coupons" tab in Super Admin Portal
-Add a 5th tab showing all sent scratch card coupons with details.
+1. **`api_settings` table does not exist** -- The edge function queries `api_settings` for the API URL and sync status, but this table was never created. This is why you get "API URL not configured" (400) or 500 errors.
 
-**New component: `src/components/superadmin/CouponsSent.tsx`**
-- Query `scratch_rewards` joined with `orders` (for phone, order_code) and `coupons` (for expiry, usage)
-- Display table with columns: Order Code, Phone, Tier (Gold/Silver/Bronze badge), Coupon Code, Discount, Sent status, Created date
-- Search/filter by phone or coupon code
+2. **`external_id` column missing from `shows` table** -- The edge function references `shows.external_id` to match API records to local rows, but the column doesn't exist in the schema.
 
-**Edit `src/pages/SuperAdminPortal.tsx`:**
-- Add 5th tab "Coupons" with a Gift/Ticket icon
-- Change grid-cols-4 to grid-cols-5
+## Plan
 
-### 3. Improve WhatsApp coupon message
-Make the message more customer-friendly with the cinema brand feel, clear instructions, and terms.
+### 1. Database migration -- Create `api_settings` table and add `external_id` to `shows`
 
-### Files to edit
-| File | Action |
-|------|--------|
-| `supabase/functions/send-reward/index.ts` | Fix phone to +977, improve message |
-| `src/components/superadmin/CouponsSent.tsx` | Create — coupons sent table |
-| `src/pages/SuperAdminPortal.tsx` | Add Coupons tab |
+```sql
+-- api_settings table for Show API configuration
+CREATE TABLE public.api_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  api_url TEXT NOT NULL DEFAULT '',
+  sync_interval_mins INTEGER NOT NULL DEFAULT 30,
+  last_sync_at TIMESTAMPTZ,
+  last_sync_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.api_settings ENABLE ROW LEVEL SECURITY;
+
+-- Admin/superadmin can manage, public can read
+CREATE POLICY "API settings publicly readable" ON public.api_settings FOR SELECT USING (true);
+CREATE POLICY "Admin can insert api_settings" ON public.api_settings FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
+CREATE POLICY "Admin can update api_settings" ON public.api_settings FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
+
+-- Add external_id to shows for API sync matching
+ALTER TABLE public.shows ADD COLUMN external_id TEXT;
+CREATE INDEX idx_shows_external_id ON public.shows(external_id);
+```
+
+### 2. No code changes needed
+The edge function and SystemSettings UI already reference these correctly -- they just need the tables to exist.
+
+### Files modified
+- New migration SQL (database migration tool)
 

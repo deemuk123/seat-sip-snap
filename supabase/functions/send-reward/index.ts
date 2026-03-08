@@ -99,20 +99,25 @@ Deno.serve(async (req) => {
       const movieName = snapshot?.movieName || snapshot?.movie_name || "your movie";
 
       const message =
-        `🎉 *Congratulations!* ${tierEmoji}\n\n` +
-        `Your ${reward.tier.toUpperCase()} scratch card reward for order *${order.order_code}* (${movieName}) is here!\n\n` +
-        `🎟️ *Coupon Code:* \`${couponCode}\`\n` +
-        `💰 *Discount:* ${reward.discount_value}% OFF your next order\n` +
-        `⏰ *Valid for:* 7 days\n\n` +
-        `Use this code at checkout on your next visit. Enjoy! 🍿`;
+        `🎬 *Cinema F&B — You Won!* ${tierEmoji}\n\n` +
+        `Hi! Thanks for ordering at the cinema 🍿\n\n` +
+        `Your *${reward.tier.toUpperCase()}* scratch card reward for order *${order.order_code}* (${movieName}) is ready!\n\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `🎟️ *Coupon Code:* ${couponCode}\n` +
+        `💰 *Discount:* ${reward.discount_value}% OFF\n` +
+        `⏰ *Valid for:* 7 days\n` +
+        `━━━━━━━━━━━━━━━\n\n` +
+        `Simply enter this code at checkout on your next visit.\n\n` +
+        `_Terms: Single use only. Cannot be combined with other offers._\n\n` +
+        `See you at the movies! 🎥`;
 
       try {
         const wahaApiUrl = (Deno.env.get("WAHA_API_URL") || "").replace(/\/+$/, "");
         const wahaApiKey = Deno.env.get("WAHA_API_KEY") || "";
 
-        // Send to customer directly
-        const phone = order.phone.startsWith("+91") ? order.phone.slice(3) : order.phone;
-        const chatId = `91${phone}@c.us`;
+        // Send to customer directly (+977 Nepal)
+        const phone = order.phone.replace(/^\+977/, "").replace(/^977/, "").replace(/\D/g, "");
+        const chatId = `977${phone}@c.us`;
 
         await fetch(`${wahaApiUrl}/api/sendText`, {
           method: "POST",
