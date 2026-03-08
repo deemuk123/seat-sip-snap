@@ -94,7 +94,7 @@ export default function SLATracker() {
                 className="flex items-center justify-between rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2"
               >
                 <span className="text-xs font-mono font-bold text-foreground">
-                  {o.order_code}
+                  Order #{o.id.slice(0, 6).toUpperCase()}
                 </span>
                 <Badge variant="destructive" className="text-[10px]">
                   {getElapsedMins(o.created_at)}m / {o.sla_target_mins || 15}m
