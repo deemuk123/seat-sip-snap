@@ -415,6 +415,45 @@ export type Database = {
         }
         Relationships: []
       }
+      scratch_prizes: {
+        Row: {
+          created_at: string
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          label: string
+          max_quantity: number
+          sort_order: number
+          tier: string
+          used_count: number
+        }
+        Insert: {
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          max_quantity?: number
+          sort_order?: number
+          tier: string
+          used_count?: number
+        }
+        Update: {
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          max_quantity?: number
+          sort_order?: number
+          tier?: string
+          used_count?: number
+        }
+        Relationships: []
+      }
       scratch_rewards: {
         Row: {
           coupon_code: string | null
