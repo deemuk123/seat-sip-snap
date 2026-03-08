@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { MenuItem } from "@/data/mockData";
 import { fetchMenuItems } from "@/lib/supabase-orders";
 import { fetchCategories } from "@/lib/supabase-manager";
 import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
+import FlashSaleBanner, { fetchActiveFlashSales, getFlashDiscount } from "@/components/checkout/FlashSaleBanner";
 
 const MenuPage = () => {
   const navigate = useNavigate();
