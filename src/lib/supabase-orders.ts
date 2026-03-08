@@ -126,7 +126,7 @@ export async function fetchMenuItems() {
     .order("name");
 
   if (error) throw error;
-  return (data || []).map((m) => ({
+  return (data || []).map((m: any) => ({
     id: m.id,
     name: m.name,
     description: m.description || "",
@@ -134,5 +134,7 @@ export async function fetchMenuItems() {
     category: m.category,
     imageUrl: m.image_url || "",
     available: m.available,
+    availableFrom: m.available_from || undefined,
+    availableUntil: m.available_until || undefined,
   }));
 }

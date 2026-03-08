@@ -19,6 +19,8 @@ export interface MenuItem {
   category: string;
   imageUrl: string;
   available: boolean;
+  availableFrom?: string;
+  availableUntil?: string;
 }
 
 export interface CartItem extends MenuItem {
