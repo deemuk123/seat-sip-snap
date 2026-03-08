@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, LayoutDashboard, ClipboardList, UtensilsCrossed, RefreshCw, Clock, QrCode } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { ArrowLeft, LayoutDashboard, ClipboardList, UtensilsCrossed, RefreshCw, Clock, QrCode, ChevronDown, ChevronUp, AlertTriangle, Film } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,13 +25,24 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+const SLA_WARN_MINS = 10;
+
+interface ShowGroup {
+  showId: string;
+  showName: string;
+  showTime: string;
+  orders: DBOrder[];
+  pendingCount: number;
+  overdueCount: number;
+}
+
 const ManagerPortal = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<DBOrder[]>([]);
-  const [shows, setShows] = useState<{ id: string; movieName: string }[]>([]);
+  const [shows, setShows] = useState<{ id: string; movieName: string; showTime?: string }[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [showFilter, setShowFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [expandedShows, setExpandedShows] = useState<Set<string>>(new Set());
 
   const [verifyOrderId, setVerifyOrderId] = useState<string | null>(null);
   const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
@@ -42,15 +52,14 @@ const ManagerPortal = () => {
     try {
       const data = await fetchAllOrders({
         status: statusFilter !== "all" ? (statusFilter as OrderStatus) : undefined,
-        showId: showFilter !== "all" ? showFilter : undefined,
       });
       setOrders(data);
     } catch { toast.error("Failed to load orders"); }
     setLoading(false);
-  }, [statusFilter, showFilter]);
+  }, [statusFilter]);
 
   useEffect(() => {
-    fetchShows().then(s => setShows(s.map(x => ({ id: x.id, movieName: x.movieName }))));
+    fetchShows().then(s => setShows(s.map(x => ({ id: x.id, movieName: x.movieName, showTime: x.showTime }))));
   }, []);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
@@ -65,6 +74,77 @@ const ManagerPortal = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [loadOrders]);
+
+  // Group orders by show
+  const showGroups = useMemo((): ShowGroup[] => {
+    const groupMap = new Map<string, DBOrder[]>();
+    const noShowOrders: DBOrder[] = [];
+
+    for (const order of orders) {
+      const showId = order.show_id || "no-show";
+      if (showId === "no-show") {
+        noShowOrders.push(order);
+      } else {
+        if (!groupMap.has(showId)) groupMap.set(showId, []);
+        groupMap.get(showId)!.push(order);
+      }
+    }
+
+    const groups: ShowGroup[] = [];
+
+    for (const [showId, showOrders] of groupMap) {
+      const snapshot = showOrders[0]?.show_snapshot as any;
+      const showInfo = shows.find(s => s.id === showId);
+      const showName = showInfo?.movieName || snapshot?.movieName || "Unknown Show";
+      const showTime = showInfo?.showTime || snapshot?.showTime || "";
+
+      const pendingCount = showOrders.filter(o => o.status !== "delivered" && o.status !== "cancelled").length;
+      const overdueCount = showOrders.filter(o => {
+        if (o.status === "delivered" || o.status === "cancelled") return false;
+        return Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000) >= SLA_WARN_MINS;
+      }).length;
+
+      groups.push({ showId, showName, showTime, orders: showOrders, pendingCount, overdueCount });
+    }
+
+    if (noShowOrders.length > 0) {
+      groups.push({
+        showId: "no-show",
+        showName: "No Show Assigned",
+        showTime: "",
+        orders: noShowOrders,
+        pendingCount: noShowOrders.filter(o => o.status !== "delivered" && o.status !== "cancelled").length,
+        overdueCount: 0,
+      });
+    }
+
+    // Sort: shows with overdue orders first, then by pending count descending
+    groups.sort((a, b) => {
+      if (a.overdueCount !== b.overdueCount) return b.overdueCount - a.overdueCount;
+      if (a.pendingCount !== b.pendingCount) return b.pendingCount - a.pendingCount;
+      return 0;
+    });
+
+    return groups;
+  }, [orders, shows]);
+
+  // Auto-expand shows with pending orders
+  useEffect(() => {
+    const autoExpand = new Set<string>();
+    for (const g of showGroups) {
+      if (g.pendingCount > 0) autoExpand.add(g.showId);
+    }
+    setExpandedShows(autoExpand);
+  }, [showGroups.length]); // Only on initial load / order count change
+
+  const toggleShow = (showId: string) => {
+    setExpandedShows(prev => {
+      const next = new Set(prev);
+      if (next.has(showId)) next.delete(showId);
+      else next.add(showId);
+      return next;
+    });
+  };
 
   const handleStatusChange = async (orderId: string, status: OrderStatus) => {
     try {
@@ -107,7 +187,7 @@ const ManagerPortal = () => {
           <span className="text-sm">Back to Dashboard</span>
         </button>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-lg cinema-gradient-primary flex items-center justify-center">
               <LayoutDashboard className="w-5 h-5 text-primary-foreground" />
@@ -147,37 +227,82 @@ const ManagerPortal = () => {
               {/* Filters */}
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
                     {STATUS_FILTERS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={showFilter} onValueChange={setShowFilter}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Show" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Shows</SelectItem>
-                    {shows.map(s => <SelectItem key={s.id} value={s.id}>{s.movieName}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Button size="icon" variant="outline" onClick={loadOrders}><RefreshCw className="w-4 h-4" /></Button>
               </div>
 
-              {/* Order list */}
+              {/* Show-grouped order list */}
               {loading ? (
                 <p className="text-sm text-muted-foreground text-center py-12">Loading orders…</p>
-              ) : orders.length === 0 ? (
+              ) : showGroups.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-12">No orders found</p>
               ) : (
                 <div className="space-y-3">
-                  {orders.map(order => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      onStatusChange={handleStatusChange}
-                      onVerifyDeliver={(id) => setVerifyOrderId(id)}
-                      onCancel={(id) => setCancelOrderId(id)}
-                    />
-                  ))}
+                  {showGroups.map(group => {
+                    const isExpanded = expandedShows.has(group.showId);
+                    return (
+                      <div key={group.showId} className="rounded-xl border border-border overflow-hidden">
+                        {/* Show header - clickable accordion */}
+                        <button
+                          onClick={() => toggleShow(group.showId)}
+                          className={`w-full flex items-center justify-between p-4 text-left transition-colors ${
+                            group.overdueCount > 0
+                              ? "bg-destructive/10 border-b border-destructive/30"
+                              : "bg-card border-b border-border"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                              group.overdueCount > 0 ? "bg-destructive/20" : "bg-secondary"
+                            }`}>
+                              <Film className={`w-4 h-4 ${group.overdueCount > 0 ? "text-destructive" : "text-primary"}`} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-display font-semibold text-foreground text-sm">{group.showName}</span>
+                                {group.showTime && (
+                                  <span className="text-xs text-muted-foreground">{group.showTime}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs text-muted-foreground">{group.orders.length} order{group.orders.length !== 1 ? "s" : ""}</span>
+                                {group.pendingCount > 0 && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-500/10 text-blue-400 border-blue-500/30">
+                                    {group.pendingCount} pending
+                                  </Badge>
+                                )}
+                                {group.overdueCount > 0 && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-destructive/20 text-destructive border-destructive/40 animate-pulse">
+                                    <AlertTriangle className="w-3 h-3 mr-0.5" />{group.overdueCount} overdue
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+                        </button>
+
+                        {/* Orders list */}
+                        {isExpanded && (
+                          <div className="p-3 space-y-3 bg-background">
+                            {group.orders.map(order => (
+                              <OrderCard
+                                key={order.id}
+                                order={order}
+                                onStatusChange={handleStatusChange}
+                                onVerifyDeliver={(id) => setVerifyOrderId(id)}
+                                onCancel={(id) => setCancelOrderId(id)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
@@ -194,7 +319,7 @@ const ManagerPortal = () => {
               <QRGenerator />
             </TabsContent>
           </Tabs>
-        </motion.div>
+        </div>
 
         <VerifyDeliverDialog
           open={!!verifyOrderId}
