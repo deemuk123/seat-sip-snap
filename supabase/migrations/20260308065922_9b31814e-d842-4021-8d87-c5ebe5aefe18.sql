@@ -1,0 +1,1 @@
+ALTER TABLE public.menu_items ADD COLUMN available_from text DEFAULT NULL, ADD COLUMN available_until text DEFAULT NULL;

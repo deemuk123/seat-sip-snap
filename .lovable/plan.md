@@ -1,38 +1,47 @@
 
 
-# Time-Based Menu Item Display
+# Fix sync-shows Edge Function: Missing Database Schema
 
-Add optional availability hours to menu items so kitchen-prepared items (e.g., Chicken Burger) only show during specified times. Hide unavailable items from customers entirely.
+## Root Cause
 
-## Database Change
+Two database schema elements are missing, causing the sync-shows function to fail:
 
-Add two nullable columns to `menu_items`:
-- `available_from` (text, e.g. "10:00") -- start time in HH:mm 24h format
-- `available_until` (text, e.g. "19:00") -- end time in HH:mm 24h format
+1. **`api_settings` table does not exist** -- The edge function queries `api_settings` for the API URL and sync status, but this table was never created. This is why you get "API URL not configured" (400) or 500 errors.
 
-When both are null, the item is always available (current behavior). When set, the item only displays to customers during that window.
+2. **`external_id` column missing from `shows` table** -- The edge function references `shows.external_id` to match API records to local rows, but the column doesn't exist in the schema.
 
-## Files to Modify
+## Plan
 
-### 1. Migration
-Add `available_from` and `available_until` text columns (nullable, default null) to `menu_items`.
+### 1. Database migration -- Create `api_settings` table and add `external_id` to `shows`
 
-### 2. `src/lib/supabase-orders.ts` — `fetchMenuItems()`
-- Return the new `available_from` and `available_until` fields in the mapped result.
+```sql
+-- api_settings table for Show API configuration
+CREATE TABLE public.api_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  api_url TEXT NOT NULL DEFAULT '',
+  sync_interval_mins INTEGER NOT NULL DEFAULT 30,
+  last_sync_at TIMESTAMPTZ,
+  last_sync_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
-### 3. `src/data/mockData.ts` — `MenuItem` interface
-- Add `availableFrom?: string` and `availableUntil?: string` optional fields.
+ALTER TABLE public.api_settings ENABLE ROW LEVEL SECURITY;
 
-### 4. `src/pages/MenuPage.tsx`
-- Add a helper `isWithinTimeWindow(from, until)` that compares current local time (HH:mm) against the window.
-- Filter out items where `available === false` OR outside the time window. Customers never see unavailable items.
+-- Admin/superadmin can manage, public can read
+CREATE POLICY "API settings publicly readable" ON public.api_settings FOR SELECT USING (true);
+CREATE POLICY "Admin can insert api_settings" ON public.api_settings FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
+CREATE POLICY "Admin can update api_settings" ON public.api_settings FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
 
-### 5. `src/components/manager/MenuManager.tsx`
-- Add `available_from` and `available_until` to the form state.
-- Add two time inputs (HH:mm) in the create/edit dialog labeled "Available From" and "Available Until" with a hint like "Leave empty for all-day".
-- Show a small time badge (e.g. "10:00-19:00") on items in the manager list when time restrictions are set.
-- Pass the new fields through to `createMenuItem` / `updateMenuItem`.
+-- Add external_id to shows for API sync matching
+ALTER TABLE public.shows ADD COLUMN external_id TEXT;
+CREATE INDEX idx_shows_external_id ON public.shows(external_id);
+```
 
-### 6. `src/lib/supabase-manager.ts`
-- Add `available_from` and `available_until` to the `createMenuItem` and `updateMenuItem` type signatures.
+### 2. No code changes needed
+The edge function and SystemSettings UI already reference these correctly -- they just need the tables to exist.
+
+### Files modified
+- New migration SQL (database migration tool)
 

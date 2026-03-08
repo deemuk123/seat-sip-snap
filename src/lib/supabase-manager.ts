@@ -120,7 +120,7 @@ export async function verifyAndDeliverOrder(
 // ---- Menu management ----
 export async function updateMenuItem(
   id: string,
-  updates: { name?: string; price?: number; description?: string; category?: string; available?: boolean; image_url?: string }
+  updates: { name?: string; price?: number; description?: string; category?: string; available?: boolean; image_url?: string; available_from?: string | null; available_until?: string | null }
 ) {
   const { error } = await supabase.from("menu_items").update(updates).eq("id", id);
   if (error) throw error;
@@ -140,6 +140,8 @@ export async function createMenuItem(item: {
   category: string;
   image_url?: string;
   available?: boolean;
+  available_from?: string | null;
+  available_until?: string | null;
 }) {
   const { data, error } = await supabase.from("menu_items").insert(item).select().single();
   if (error) throw error;

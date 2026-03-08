@@ -20,10 +20,18 @@ const MenuPage = () => {
     }).catch(() => setLoading(false));
   }, []);
 
-  const filteredItems =
-    activeCategory === "All"
-      ? menuItems
-      : menuItems.filter((item) => item.category === activeCategory);
+  const isWithinTimeWindow = (from?: string, until?: string) => {
+    if (!from && !until) return true;
+    const now = new Date();
+    const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    if (from && hhmm < from) return false;
+    if (until && hhmm > until) return false;
+    return true;
+  };
+
+  const filteredItems = menuItems
+    .filter((item) => item.available && isWithinTimeWindow(item.availableFrom, item.availableUntil))
+    .filter((item) => activeCategory === "All" || item.category === activeCategory);
 
   const getCartQuantity = (itemId: string) => {
     const item = cart.find((c) => c.id === itemId);

@@ -21,6 +21,8 @@ interface MenuItemData {
   category: string;
   imageUrl: string;
   available: boolean;
+  availableFrom?: string;
+  availableUntil?: string;
 }
 
 const CATEGORIES = ["Popcorn", "Combos", "Beverages", "Snacks", "Premium", "Offers"];
@@ -30,7 +32,7 @@ export default function MenuManager() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MenuItemData | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", description: "", category: "Popcorn", image_url: "" });
+  const [form, setForm] = useState({ name: "", price: "", description: "", category: "Popcorn", image_url: "", available_from: "", available_until: "" });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,13 +49,13 @@ export default function MenuManager() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: "", price: "", description: "", category: "Popcorn", image_url: "" });
+    setForm({ name: "", price: "", description: "", category: "Popcorn", image_url: "", available_from: "", available_until: "" });
     setDialogOpen(true);
   };
 
   const openEdit = (item: MenuItemData) => {
     setEditing(item);
-    setForm({ name: item.name, price: String(item.price), description: item.description, category: item.category, image_url: item.imageUrl });
+    setForm({ name: item.name, price: String(item.price), description: item.description, category: item.category, image_url: item.imageUrl, available_from: item.availableFrom || "", available_until: item.availableUntil || "" });
     setDialogOpen(true);
   };
 
@@ -81,10 +83,10 @@ export default function MenuManager() {
     if (!form.name || isNaN(price) || price <= 0) { toast.error("Name and valid price required"); return; }
     try {
       if (editing) {
-        await updateMenuItem(editing.id, { name: form.name, price, description: form.description, category: form.category, image_url: form.image_url });
+        await updateMenuItem(editing.id, { name: form.name, price, description: form.description, category: form.category, image_url: form.image_url, available_from: form.available_from || null, available_until: form.available_until || null });
         toast.success("Item updated");
       } else {
-        await createMenuItem({ name: form.name, price, description: form.description, category: form.category, image_url: form.image_url });
+        await createMenuItem({ name: form.name, price, description: form.description, category: form.category, image_url: form.image_url, available_from: form.available_from || null, available_until: form.available_until || null });
         toast.success("Item created");
       }
       setDialogOpen(false);
@@ -135,6 +137,9 @@ export default function MenuManager() {
                     <span className="font-medium text-sm text-foreground truncate">{item.name}</span>
                     <span className="text-xs text-muted-foreground">₹{item.price}</span>
                     <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{item.category}</span>
+                    {(item.availableFrom || item.availableUntil) && (
+                      <span className="text-xs text-accent-foreground bg-accent px-1.5 py-0.5 rounded">🕐 {item.availableFrom || "00:00"}–{item.availableUntil || "23:59"}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -178,6 +183,14 @@ export default function MenuManager() {
                   </Button>
                   <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="Or paste URL…" className="flex-1 text-xs" />
                 </div>
+              </div>
+            </div>
+            <div>
+              <Label>Availability Hours <span className="text-xs text-muted-foreground font-normal">(leave empty for all-day)</span></Label>
+              <div className="flex gap-2 items-center">
+                <Input type="time" value={form.available_from} onChange={e => setForm(f => ({ ...f, available_from: e.target.value }))} className="flex-1" placeholder="From" />
+                <span className="text-muted-foreground text-sm">to</span>
+                <Input type="time" value={form.available_until} onChange={e => setForm(f => ({ ...f, available_until: e.target.value }))} className="flex-1" placeholder="Until" />
               </div>
             </div>
           </div>
