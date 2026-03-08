@@ -141,6 +141,7 @@ export default function MenuManager() {
                       <span className="text-xs text-accent-foreground bg-accent px-1.5 py-0.5 rounded">🕐 {item.availableFrom || "00:00"}–{item.availableUntil || "23:59"}</span>
                     )}
                   </div>
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Switch checked={item.available} onCheckedChange={() => handleToggle(item)} />
