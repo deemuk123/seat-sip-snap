@@ -48,6 +48,9 @@ const ManagerPortal = () => {
   const [verifyOrderId, setVerifyOrderId] = useState<string | null>(null);
   const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
 
+  // Sound notifications for new / overdue orders
+  useOrderSound({ orders });
+
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
