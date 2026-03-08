@@ -175,8 +175,25 @@ const Checkout = () => {
         {cart.map((item) => (
           <motion.div key={item.id} layout className="rounded-xl bg-card border border-border p-4 flex items-center gap-4">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground text-sm truncate">{item.name}</h3>
-              <p className="text-primary font-bold text-sm mt-1">₹{item.price * item.quantity}</p>
+              <h3 className="font-semibold text-foreground text-sm truncate">
+                {item.name}
+                {getFlashDiscount(item.id, item.price, flashSales) !== null && (
+                  <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full align-middle">
+                    <Zap className="w-2.5 h-2.5" /> FLASH
+                  </span>
+                )}
+              </h3>
+              {(() => {
+                const fp = getFlashDiscount(item.id, item.price, flashSales);
+                return fp !== null ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-primary font-bold text-sm">₹{fp * item.quantity}</span>
+                    <span className="text-xs text-muted-foreground line-through">₹{item.price * item.quantity}</span>
+                  </div>
+                ) : (
+                  <p className="text-primary font-bold text-sm mt-1">₹{item.price * item.quantity}</p>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
