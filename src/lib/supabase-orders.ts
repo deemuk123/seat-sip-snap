@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateOrderCode } from "@/data/mockData";
 import type { Show, CartItem, Order } from "@/data/mockData";
+import { notifyNewOrder } from "@/lib/whatsapp-notify";
 
 export async function insertOrder(params: {
   show: Show;
