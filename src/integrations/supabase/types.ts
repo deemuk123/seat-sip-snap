@@ -118,6 +118,39 @@ export type Database = {
           },
         ]
       }
+      daily_summaries: {
+        Row: {
+          cancelled_amount: number
+          cancelled_orders: number
+          confirmed_orders: number
+          confirmed_sales: number
+          created_at: string
+          id: string
+          summary_date: string
+          total_orders: number
+        }
+        Insert: {
+          cancelled_amount?: number
+          cancelled_orders?: number
+          confirmed_orders?: number
+          confirmed_sales?: number
+          created_at?: string
+          id?: string
+          summary_date: string
+          total_orders?: number
+        }
+        Update: {
+          cancelled_amount?: number
+          cancelled_orders?: number
+          confirmed_orders?: number
+          confirmed_sales?: number
+          created_at?: string
+          id?: string
+          summary_date?: string
+          total_orders?: number
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string
