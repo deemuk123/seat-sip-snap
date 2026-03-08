@@ -56,6 +56,38 @@ Deno.serve(async (req) => {
 
     if (upsertError) throw upsertError
 
+    // Aggregate item-level stats for the day
+    const confirmedIds = confirmed.map(o => o.id)
+    if (confirmedIds.length > 0) {
+      const { data: items } = await supabase
+        .from('order_items')
+        .select('name, quantity, price')
+        .in('order_id', confirmedIds)
+
+      if (items && items.length > 0) {
+        const itemMap: Record<string, { qty: number; revenue: number }> = {}
+        for (const item of items) {
+          const key = item.name
+          if (!itemMap[key]) itemMap[key] = { qty: 0, revenue: 0 }
+          itemMap[key].qty += item.quantity
+          itemMap[key].revenue += Number(item.price) * item.quantity
+        }
+
+        const itemRows = Object.entries(itemMap).map(([name, stats]) => ({
+          summary_date: targetDate,
+          item_name: name,
+          quantity_sold: stats.qty,
+          revenue: stats.revenue,
+        }))
+
+        const { error: itemError } = await supabase
+          .from('daily_item_stats')
+          .upsert(itemRows, { onConflict: 'summary_date,item_name' })
+
+        if (itemError) console.error('Item stats upsert error:', itemError.message)
+      }
+    }
+
     // Cleanup: delete order_items for orders older than 30 days
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 30)
