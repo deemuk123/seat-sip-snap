@@ -69,6 +69,10 @@ const SuperAdminPortal = () => {
               <PrizeManager />
             </TabsContent>
 
+            <TabsContent value="flash">
+              <FlashSaleManager />
+            </TabsContent>
+
             <TabsContent value="users">
               <UserManagement />
             </TabsContent>
