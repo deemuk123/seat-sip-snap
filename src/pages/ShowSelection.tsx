@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Film, Clock, Monitor, Languages, Sparkles, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Order, Show } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
