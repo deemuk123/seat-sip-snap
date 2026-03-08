@@ -121,6 +121,13 @@ export async function updateOrderStatus(
       movieName: snapshot?.movieName || snapshot?.movie_name || "N/A",
     });
   }
+
+  // Trigger scratch card reward on delivery
+  if (newStatus === "delivered") {
+    supabase.functions.invoke("send-reward", {
+      body: { order_id: orderId },
+    }).catch((err) => console.error("send-reward failed:", err));
+  }
 }
 
 export async function verifyAndDeliverOrder(

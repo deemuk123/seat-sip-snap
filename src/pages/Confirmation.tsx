@@ -3,6 +3,7 @@ import { CheckCircle2, Copy, Armchair, Store } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { useState } from "react";
+import ScratchCard from "@/components/checkout/ScratchCard";
 
 const Confirmation = () => {
   const navigate = useNavigate();
@@ -80,6 +81,19 @@ const Confirmation = () => {
           {copied ? "Copied!" : "Show this code for delivery verification"}
         </p>
       </motion.div>
+
+      {/* Scratch Card */}
+      {currentOrder.scratchReward && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="w-full max-w-sm mb-6"
+        >
+          <p className="text-xs text-muted-foreground text-center mb-3 uppercase tracking-wider">🎁 Your Reward</p>
+          <ScratchCard reward={currentOrder.scratchReward} />
+        </motion.div>
+      )}
 
       {/* Order Details */}
       <motion.div

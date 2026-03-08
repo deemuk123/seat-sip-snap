@@ -30,6 +30,11 @@ export interface CartItem extends MenuItem {
   quantity: number;
 }
 
+export interface ScratchReward {
+  tier: "gold" | "silver" | "bronze" | "none";
+  discountValue: number;
+}
+
 export interface Order {
   id: string;
   orderCode: string;
@@ -42,6 +47,7 @@ export interface Order {
   total: number;
   createdAt: string;
   estimatedDelivery: string;
+  scratchReward?: ScratchReward;
 }
 
 export const mockShows: Show[] = [
