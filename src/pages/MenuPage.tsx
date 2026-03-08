@@ -6,7 +6,6 @@ import { useApp } from "@/context/AppContext";
 import { MenuItem } from "@/data/mockData";
 import { fetchMenuItems } from "@/lib/supabase-orders";
 import { fetchCategories } from "@/lib/supabase-manager";
-import { fetchMenuItems } from "@/lib/supabase-orders";
 import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 
 const MenuPage = () => {
