@@ -67,10 +67,8 @@ interface ApiSettings {
 
 export default function SystemSettings() {
   const [config, setConfig] = useState<SystemConfig>(DEFAULT_CONFIG);
-  const [scratch, setScratch] = useState<ScratchCardConfig>(DEFAULT_SCRATCH);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingScratch, setSavingScratch] = useState(false);
 
   // Show API state
   const [apiSettings, setApiSettings] = useState<ApiSettings>({
