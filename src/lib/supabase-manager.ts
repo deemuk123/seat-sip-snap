@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Order, Show } from "@/data/mockData";
+import { notifyOrderCancelled } from "@/lib/whatsapp-notify";
 
 export type OrderStatus = "received" | "preparing" | "out-for-delivery" | "delivered" | "cancelled";
 
