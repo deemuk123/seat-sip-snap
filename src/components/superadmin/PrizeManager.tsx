@@ -188,16 +188,6 @@ export default function PrizeManager() {
               </div>
             </>
           )}
-              { label: "🥈 Silver", value: silverProb, color: "bg-gray-300/30 text-gray-600" },
-              { label: "🥉 Bronze", value: bronzeProb, color: "bg-orange-400/20 text-orange-700" },
-              { label: "🔄 Try Again", value: tryAgainProb, color: "bg-muted text-muted-foreground" },
-            ].map((t) => (
-              <div key={t.label} className={`rounded-md px-2 py-1.5 text-center ${t.color}`}>
-                <p className="text-[10px]">{t.label}</p>
-                <p className="text-sm font-bold">{t.value}%</p>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
 
