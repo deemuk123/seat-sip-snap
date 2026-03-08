@@ -89,7 +89,7 @@ const ShowSelection = () => {
     <div className="min-h-screen bg-background pb-24">
       {/* Banner */}
       <div className="w-full overflow-hidden">
-        <img src={cinemaBanner} alt="BigMovies - Bigger Better Blockbuster" className="w-full h-auto object-cover" />
+        <img src={cinemaBanner} alt="BigMovies - Bigger Better Blockbuster" className="w-full h-auto object-cover" loading="eager" decoding="async" fetchPriority="high" />
       </div>
 
       <div className="px-4 pt-6">
