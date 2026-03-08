@@ -118,6 +118,33 @@ export type Database = {
           },
         ]
       }
+      daily_item_stats: {
+        Row: {
+          created_at: string
+          id: string
+          item_name: string
+          quantity_sold: number
+          revenue: number
+          summary_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_name: string
+          quantity_sold?: number
+          revenue?: number
+          summary_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_name?: string
+          quantity_sold?: number
+          revenue?: number
+          summary_date?: string
+        }
+        Relationships: []
+      }
       daily_summaries: {
         Row: {
           cancelled_amount: number
