@@ -115,9 +115,9 @@ Deno.serve(async (req) => {
         const wahaApiUrl = (Deno.env.get("WAHA_API_URL") || "").replace(/\/+$/, "");
         const wahaApiKey = Deno.env.get("WAHA_API_KEY") || "";
 
-        // Send to customer directly
-        const phone = order.phone.startsWith("+91") ? order.phone.slice(3) : order.phone;
-        const chatId = `91${phone}@c.us`;
+        // Send to customer directly (+977 Nepal)
+        const phone = order.phone.replace(/^\+977/, "").replace(/^977/, "").replace(/\D/g, "");
+        const chatId = `977${phone}@c.us`;
 
         await fetch(`${wahaApiUrl}/api/sendText`, {
           method: "POST",
