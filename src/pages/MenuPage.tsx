@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { menuCategories, MenuItem } from "@/data/mockData";
 import { fetchMenuItems } from "@/lib/supabase-orders";
+import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 
 const MenuPage = () => {
   const navigate = useNavigate();
