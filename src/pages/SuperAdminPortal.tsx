@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Users, ScrollText, MessageCircle } from "lucide-react";
+import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/superadmin/UserManagement";
 import AuditLogs from "@/components/superadmin/AuditLogs";
 import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
+import OrderDetailsTable from "@/components/superadmin/OrderDetailsTable";
 
 const SuperAdminPortal = () => {
   const navigate = useNavigate();
@@ -28,8 +29,11 @@ const SuperAdminPortal = () => {
             </div>
           </div>
 
-          <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue="orders" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="orders" className="flex items-center gap-1.5">
+                <ClipboardList className="w-4 h-4" /> Orders
+              </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-1.5">
                 <Users className="w-4 h-4" /> Users
               </TabsTrigger>
@@ -40,6 +44,10 @@ const SuperAdminPortal = () => {
                 <MessageCircle className="w-4 h-4" /> WhatsApp
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="orders">
+              <OrderDetailsTable />
+            </TabsContent>
 
             <TabsContent value="users">
               <UserManagement />
