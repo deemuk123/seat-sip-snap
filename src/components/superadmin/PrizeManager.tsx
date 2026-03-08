@@ -52,6 +52,7 @@ export default function PrizeManager() {
     try {
       const val = await fetchSetting("scratch_card_config");
       setIsEnabled(val?.enabled ?? false);
+      setTryAgainWeight(val?.try_again_weight ?? 20);
     } catch {}
   };
 
