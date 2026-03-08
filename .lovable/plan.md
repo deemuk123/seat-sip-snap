@@ -1,37 +1,47 @@
 
 
-## Problem
+# Fix sync-shows Edge Function: Missing Database Schema
 
-The show sync process nullifies `show_id` on all orders (sets it to `null`) before repopulating the `shows` table. This means after every sync, all orders lose their `show_id` foreign key, causing the Manager Portal to group everything under "No Show Assigned."
+## Root Cause
 
-However, each order already stores the full show details in its `show_snapshot` JSON column (including `movieName`, `showTime`, `screenNumber`).
+Two database schema elements are missing, causing the sync-shows function to fail:
 
-## Solution
+1. **`api_settings` table does not exist** -- The edge function queries `api_settings` for the API URL and sync status, but this table was never created. This is why you get "API URL not configured" (400) or 500 errors.
 
-Change the grouping logic in `ManagerPortal.tsx` to use `show_snapshot` data instead of `show_id`:
+2. **`external_id` column missing from `shows` table** -- The edge function references `shows.external_id` to match API records to local rows, but the column doesn't exist in the schema.
 
-1. **Generate a grouping key from `show_snapshot`** — combine `movieName + showTime` (or use the snapshot's `id`) as the group key, since `show_id` is unreliable after syncs.
+## Plan
 
-2. **Extract show name and time from the snapshot** for display, falling back to `show_id`-based lookup only as a secondary option.
+### 1. Database migration -- Create `api_settings` table and add `external_id` to `shows`
 
-3. **Apply the same fix to the SuperAdmin `OrderDetailsTable`** — it already reads movie name from snapshot, so no change needed there.
+```sql
+-- api_settings table for Show API configuration
+CREATE TABLE public.api_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  api_url TEXT NOT NULL DEFAULT '',
+  sync_interval_mins INTEGER NOT NULL DEFAULT 30,
+  last_sync_at TIMESTAMPTZ,
+  last_sync_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
-### Technical Detail
+ALTER TABLE public.api_settings ENABLE ROW LEVEL SECURITY;
 
-In `ManagerPortal.tsx` around line 88, replace the grouping logic:
+-- Admin/superadmin can manage, public can read
+CREATE POLICY "API settings publicly readable" ON public.api_settings FOR SELECT USING (true);
+CREATE POLICY "Admin can insert api_settings" ON public.api_settings FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
+CREATE POLICY "Admin can update api_settings" ON public.api_settings FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'superadmin'));
 
-```typescript
-// Before: groups by show_id (often null after sync)
-const showId = order.show_id || "no-show";
-
-// After: groups by snapshot identity, falling back to show_id
-const snapshot = order.show_snapshot as any;
-const groupKey = snapshot?.movieName && snapshot?.showTime
-  ? `${snapshot.movieName}::${snapshot.showTime}`
-  : order.show_id || "no-show";
+-- Add external_id to shows for API sync matching
+ALTER TABLE public.shows ADD COLUMN external_id TEXT;
+CREATE INDEX idx_shows_external_id ON public.shows(external_id);
 ```
 
-Then derive `showName` and `showTime` from the snapshot for each group. Orders without any snapshot data still fall into "No Show Assigned."
+### 2. No code changes needed
+The edge function and SystemSettings UI already reference these correctly -- they just need the tables to exist.
 
-**Files to edit:** `src/pages/ManagerPortal.tsx` (grouping logic only, ~10 lines changed)
+### Files modified
+- New migration SQL (database migration tool)
 
