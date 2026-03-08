@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { menuCategories, MenuItem } from "@/data/mockData";
 import { fetchMenuItems } from "@/lib/supabase-orders";
+import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 
 const MenuPage = () => {
   const navigate = useNavigate();
@@ -69,8 +70,13 @@ const MenuPage = () => {
         </div>
       </div>
 
+      {/* Interval Boost Banner */}
+      <div className="px-4 pt-4">
+        <IntervalBoostBanner />
+      </div>
+
       {/* Menu Items */}
-      <div className="px-4 pt-4 space-y-3">
+      <div className="px-4 pt-2 space-y-3">
         {loading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : (
