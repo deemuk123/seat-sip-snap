@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList, Ticket } from "lucide-react";
+import { ArrowLeft, Shield, Users, ScrollText, MessageCircle, ClipboardList, Ticket, Gift } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/superadmin/UserManagement";
@@ -7,6 +7,7 @@ import AuditLogs from "@/components/superadmin/AuditLogs";
 import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
 import OrderDetailsTable from "@/components/superadmin/OrderDetailsTable";
 import CouponsSent from "@/components/superadmin/CouponsSent";
+import PrizeManager from "@/components/superadmin/PrizeManager";
 
 const SuperAdminPortal = () => {
   const navigate = useNavigate();
@@ -31,21 +32,24 @@ const SuperAdminPortal = () => {
           </div>
 
           <Tabs defaultValue="orders" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="orders" className="flex items-center gap-1.5">
-                <ClipboardList className="w-4 h-4" /> Orders
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="orders" className="flex items-center gap-1 text-xs">
+                <ClipboardList className="w-3.5 h-3.5" /> Orders
               </TabsTrigger>
-              <TabsTrigger value="coupons" className="flex items-center gap-1.5">
-                <Ticket className="w-4 h-4" /> Coupons
+              <TabsTrigger value="coupons" className="flex items-center gap-1 text-xs">
+                <Ticket className="w-3.5 h-3.5" /> Coupons
               </TabsTrigger>
-              <TabsTrigger value="users" className="flex items-center gap-1.5">
-                <Users className="w-4 h-4" /> Users
+              <TabsTrigger value="prizes" className="flex items-center gap-1 text-xs">
+                <Gift className="w-3.5 h-3.5" /> Prizes
               </TabsTrigger>
-              <TabsTrigger value="audit" className="flex items-center gap-1.5">
-                <ScrollText className="w-4 h-4" /> Audit
+              <TabsTrigger value="users" className="flex items-center gap-1 text-xs">
+                <Users className="w-3.5 h-3.5" /> Users
               </TabsTrigger>
-              <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
-                <MessageCircle className="w-4 h-4" /> WhatsApp
+              <TabsTrigger value="audit" className="flex items-center gap-1 text-xs">
+                <ScrollText className="w-3.5 h-3.5" /> Audit
+              </TabsTrigger>
+              <TabsTrigger value="whatsapp" className="flex items-center gap-1 text-xs">
+                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
               </TabsTrigger>
             </TabsList>
 
@@ -55,6 +59,10 @@ const SuperAdminPortal = () => {
 
             <TabsContent value="coupons">
               <CouponsSent />
+            </TabsContent>
+
+            <TabsContent value="prizes">
+              <PrizeManager />
             </TabsContent>
 
             <TabsContent value="users">
