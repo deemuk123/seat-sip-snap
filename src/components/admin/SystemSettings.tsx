@@ -297,13 +297,15 @@ export default function SystemSettings() {
       {/* Scratch Card Rewards */}
       <Card className="border-primary/30">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Gift className="w-4 h-4 text-primary" />
-              Scratch Card Rewards
-            </CardTitle>
-            <Switch checked={scratch.enabled} onCheckedChange={v => updateScratch("enabled", v)} />
-          </div>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Gift className="w-4 h-4 text-primary" />
+            Scratch Card Rewards
+            {scratch.enabled ? (
+              <span className="text-[10px] text-primary font-normal ml-auto">✅ Enabled by Super Admin</span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground font-normal ml-auto">❌ Disabled — contact Super Admin to enable</span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {scratch.enabled && (
