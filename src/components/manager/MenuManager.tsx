@@ -297,8 +297,6 @@ export default function MenuManager() {
     </div>
   );
 }
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MenuItemData | null>(null);
   const [form, setForm] = useState({ name: "", price: "", description: "", category: "Popcorn", image_url: "", available_from: "", available_until: "" });
   const [uploading, setUploading] = useState(false);
