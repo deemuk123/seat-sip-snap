@@ -168,6 +168,52 @@ export async function deleteMenuItem(id: string) {
   });
 }
 
+// ---- Categories ----
+export async function fetchCategories(): Promise<{ id: string; name: string; sort_order: number }[]> {
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .select("*")
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createCategory(name: string) {
+  // Get max sort_order
+  const { data: existing } = await supabase
+    .from("menu_categories")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+  const { error } = await supabase
+    .from("menu_categories")
+    .insert({ name, sort_order: nextOrder });
+  if (error) throw error;
+
+  await logAudit({
+    action: "category_created",
+    targetType: "menu_category",
+    details: { name },
+  });
+}
+
+export async function deleteCategory(id: string, name: string) {
+  const { error } = await supabase
+    .from("menu_categories")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+
+  await logAudit({
+    action: "category_deleted",
+    targetType: "menu_category",
+    targetId: id,
+    details: { name },
+  });
+}
+
 // ---- Daily summaries ----
 export async function fetchDailySummaries(limit = 30) {
   const { data, error } = await supabase

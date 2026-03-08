@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Upload, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Image, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { fetchMenuItems } from "@/lib/supabase-orders";
-import { createMenuItem, updateMenuItem, deleteMenuItem } from "@/lib/supabase-manager";
+import { createMenuItem, updateMenuItem, deleteMenuItem, fetchCategories, createCategory, deleteCategory } from "@/lib/supabase-manager";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -25,21 +25,38 @@ interface MenuItemData {
   availableUntil?: string;
 }
 
-const CATEGORIES = ["Popcorn", "Combos", "Beverages", "Snacks", "Premium", "Offers"];
+interface Category {
+  id: string;
+  name: string;
+  sort_order: number;
+}
 
 export default function MenuManager() {
   const [items, setItems] = useState<MenuItemData[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MenuItemData | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", description: "", category: "Popcorn", image_url: "", available_from: "", available_until: "" });
+  const [form, setForm] = useState({ name: "", price: "", description: "", category: "", image_url: "", available_from: "", available_until: "" });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Category management
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [catLoading, setCatLoading] = useState(false);
+
+  const loadCategories = async () => {
+    try {
+      const cats = await fetchCategories();
+      setCategories(cats);
+    } catch { /* ignore */ }
+  };
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await fetchMenuItems();
+      const [data] = await Promise.all([fetchMenuItems(), loadCategories()]);
       setItems(data);
     } catch { toast.error("Failed to load menu"); }
     setLoading(false);
@@ -47,9 +64,11 @@ export default function MenuManager() {
 
   useEffect(() => { load(); }, []);
 
+  const categoryNames = categories.map(c => c.name);
+
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: "", price: "", description: "", category: "Popcorn", image_url: "", available_from: "", available_until: "" });
+    setForm({ name: "", price: "", description: "", category: categoryNames[0] || "", image_url: "", available_from: "", available_until: "" });
     setDialogOpen(true);
   };
 
@@ -109,11 +128,46 @@ export default function MenuManager() {
     } catch { toast.error("Delete failed"); }
   };
 
+  const handleAddCategory = async () => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) return;
+    if (categoryNames.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error("Category already exists");
+      return;
+    }
+    setCatLoading(true);
+    try {
+      await createCategory(trimmed);
+      toast.success("Category added");
+      setNewCatName("");
+      await loadCategories();
+    } catch { toast.error("Failed to add category"); }
+    setCatLoading(false);
+  };
+
+  const handleDeleteCategory = async (cat: Category) => {
+    const itemsInCat = items.filter(i => i.category === cat.name);
+    if (itemsInCat.length > 0) {
+      toast.error(`Cannot delete "${cat.name}" — ${itemsInCat.length} item(s) use it`);
+      return;
+    }
+    try {
+      await deleteCategory(cat.id, cat.name);
+      toast.success("Category deleted");
+      await loadCategories();
+    } catch { toast.error("Failed to delete category"); }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-display font-bold text-lg text-foreground">Menu Items</h2>
-        <Button size="sm" onClick={openCreate}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setCatDialogOpen(true)}>
+            <Tag className="w-4 h-4 mr-1" /> Categories
+          </Button>
+          <Button size="sm" onClick={openCreate}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+        </div>
       </div>
 
       {loading ? (
@@ -153,6 +207,7 @@ export default function MenuManager() {
         </div>
       )}
 
+      {/* Add/Edit Item Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -164,7 +219,7 @@ export default function MenuManager() {
             <div><Label>Category</Label>
               <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectContent>{categoryNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
@@ -197,6 +252,46 @@ export default function MenuManager() {
           <DialogFooter>
             <Button onClick={handleSave}>{editing ? "Update" : "Create"}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Categories Management Dialog */}
+      <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Manage Categories</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={newCatName}
+                onChange={e => setNewCatName(e.target.value)}
+                placeholder="New category name"
+                onKeyDown={e => e.key === "Enter" && handleAddCategory()}
+              />
+              <Button onClick={handleAddCategory} disabled={catLoading || !newCatName.trim()} size="sm">
+                <Plus className="w-4 h-4 mr-1" /> Add
+              </Button>
+            </div>
+            <div className="space-y-1.5 max-h-60 overflow-y-auto">
+              {categories.map(cat => (
+                <div key={cat.id} className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2">
+                  <span className="text-sm font-medium text-foreground">{cat.name}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => handleDeleteCategory(cat)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+              {categories.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">No categories yet</p>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { menuCategories, MenuItem } from "@/data/mockData";
+import { MenuItem } from "@/data/mockData";
 import { fetchMenuItems } from "@/lib/supabase-orders";
+import { fetchCategories } from "@/lib/supabase-manager";
 import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 
 const MenuPage = () => {
@@ -12,11 +13,13 @@ const MenuPage = () => {
   const { addToCart, updateQuantity, cart, cartTotal, cartCount } = useApp();
   const [activeCategory, setActiveCategory] = useState("Combos");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuCategories, setMenuCategories] = useState<string[]>(["All"]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMenuItems().then((data) => {
-      setMenuItems(data);
+    Promise.all([fetchMenuItems(), fetchCategories()]).then(([items, cats]) => {
+      setMenuItems(items);
+      setMenuCategories(["All", ...cats.map(c => c.name)]);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
