@@ -86,8 +86,13 @@ const ShowSelection = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 pb-24 pt-6">
-      {/* Header */}
+    <div className="min-h-screen bg-background pb-24">
+      {/* Banner */}
+      <div className="w-full overflow-hidden">
+        <img src={cinemaBanner} alt="BigMovies - Bigger Better Blockbuster" className="w-full h-auto object-cover" />
+      </div>
+
+      <div className="px-4 pt-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-5 h-5 text-primary" />
