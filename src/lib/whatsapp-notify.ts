@@ -1,15 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
-async function sendWhatsApp(text: string) {
-  try {
-    const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+function sendWhatsApp(text: string) {
+  // Completely fire-and-forget — never throw or reject
+  setTimeout(() => {
+    supabase.functions.invoke("send-whatsapp", {
       body: { text },
+    }).catch(() => {
+      // Silently ignore WhatsApp errors
     });
-    if (error) console.error("WhatsApp notification error:", error);
-    return data;
-  } catch (err) {
-    console.error("WhatsApp notification failed:", err);
-  }
+  }, 100);
 }
 
 export function notifyNewOrder(params: {
