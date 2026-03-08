@@ -33,6 +33,7 @@ export default function PrizeManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [tryAgainWeight, setTryAgainWeight] = useState(20);
 
   // New prize form
   const [newTier, setNewTier] = useState<string>("gold");
