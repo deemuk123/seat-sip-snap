@@ -83,11 +83,11 @@ const MenuPage = () => {
         {loading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : (
-          <AnimatePresence mode="popLayout">
+          <>
             {filteredItems.map((item) => {
               const qty = getCartQuantity(item.id);
               return (
-                <motion.div key={item.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="rounded-xl bg-card border border-border p-4">
+                <div key={item.id} className="rounded-xl bg-card border border-border p-4">
                   <div className="flex gap-4">
                     <div className="w-20 h-20 rounded-lg bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
                       {item.imageUrl ? (
@@ -95,6 +95,8 @@ const MenuPage = () => {
                           src={item.imageUrl}
                           alt={item.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling && ((e.target as HTMLImageElement).nextElementSibling as HTMLElement).style.removeProperty('display'); }}
                         />
                       ) : null}
@@ -127,10 +129,10 @@ const MenuPage = () => {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
-          </AnimatePresence>
+          </>
         )}
       </div>
 
