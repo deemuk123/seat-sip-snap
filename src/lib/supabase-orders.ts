@@ -116,6 +116,9 @@ export async function fetchShows() {
     format: s.format,
     posterUrl: s.poster_url || "",
     status: (s as any).status || "upcoming",
+    intervalStart: (s as any).interval_start || undefined,
+    intervalEnd: (s as any).interval_end || undefined,
+    totalDurationMin: (s as any).total_duration_min || undefined,
   }));
 }
 
