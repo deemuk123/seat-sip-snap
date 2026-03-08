@@ -55,7 +55,7 @@ export default function MenuManager() {
 
   const openEdit = (item: MenuItemData) => {
     setEditing(item);
-    setForm({ name: item.name, price: String(item.price), description: item.description, category: item.category, image_url: item.imageUrl });
+    setForm({ name: item.name, price: String(item.price), description: item.description, category: item.category, image_url: item.imageUrl, available_from: item.availableFrom || "", available_until: item.availableUntil || "" });
     setDialogOpen(true);
   };
 
