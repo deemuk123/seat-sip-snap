@@ -134,14 +134,10 @@ const ManagerPortal = () => {
     return groups;
   }, [orders]);
 
-  // Auto-expand shows with pending orders
+  // All shows collapsed by default — user expands manually
   useEffect(() => {
-    const autoExpand = new Set<string>();
-    for (const g of showGroups) {
-      if (g.pendingCount > 0) autoExpand.add(g.showId);
-    }
-    setExpandedShows(autoExpand);
-  }, [showGroups.length]); // Only on initial load / order count change
+    setExpandedShows(new Set());
+  }, [showGroups.length]);
 
   const toggleShow = (showId: string) => {
     setExpandedShows(prev => {

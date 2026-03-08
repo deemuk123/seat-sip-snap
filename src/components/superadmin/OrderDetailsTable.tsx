@@ -15,6 +15,7 @@ interface OrderRow {
   delivery_mode: string;
   seat_number: string | null;
   created_at: string;
+  updated_at: string;
   show_snapshot: any;
 }
 
@@ -35,7 +36,7 @@ export default function OrderDetailsTable() {
     setLoading(true);
     const { data, error } = await supabase
       .from("orders")
-      .select("id, order_code, phone, status, total, delivery_mode, seat_number, created_at, show_snapshot")
+      .select("id, order_code, phone, status, total, delivery_mode, seat_number, created_at, updated_at, show_snapshot")
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -79,13 +80,14 @@ export default function OrderDetailsTable() {
               <TableHead className="text-xs">Mode</TableHead>
               <TableHead className="text-xs">Total</TableHead>
               <TableHead className="text-xs">Status</TableHead>
+              <TableHead className="text-xs">TAT</TableHead>
               <TableHead className="text-xs">Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   {loading ? "Loading…" : "No orders found"}
                 </TableCell>
               </TableRow>
@@ -93,8 +95,15 @@ export default function OrderDetailsTable() {
               filtered.map((o) => {
                 const snapshot = o.show_snapshot as any;
                 const movieName = snapshot?.movieName || snapshot?.movie_name || "—";
+                const isPending = o.status !== "delivered" && o.status !== "cancelled";
+                const tatMins = o.status === "delivered"
+                  ? Math.floor((new Date(o.updated_at).getTime() - new Date(o.created_at).getTime()) / 60000)
+                  : null;
+                const pendingMins = isPending
+                  ? Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000)
+                  : null;
                 return (
-                  <TableRow key={o.id}>
+                  <TableRow key={o.id} className={isPending ? "bg-amber-500/5" : ""}>
                     <TableCell className="font-mono font-bold text-primary">{o.order_code}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{o.id.slice(0, 8)}…</TableCell>
                     <TableCell>{o.phone}</TableCell>
@@ -105,6 +114,13 @@ export default function OrderDetailsTable() {
                       <Badge variant="outline" className={statusColors[o.status] || ""}>
                         {o.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs font-medium whitespace-nowrap">
+                      {tatMins !== null ? (
+                        <span className={tatMins > 15 ? "text-destructive" : "text-emerald-400"}>{tatMins}m</span>
+                      ) : pendingMins !== null ? (
+                        <span className={pendingMins >= 10 ? "text-destructive animate-pulse" : "text-amber-400"}>⏳ {pendingMins}m</span>
+                      ) : "—"}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(o.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
