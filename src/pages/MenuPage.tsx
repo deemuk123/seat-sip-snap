@@ -111,10 +111,20 @@ const MenuPage = () => {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-display font-semibold text-foreground truncate">{item.name}</h3>
+                      <h3 className="font-display font-semibold text-foreground truncate">
+                        {item.name}
+                        {isFlash && (
+                          <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full align-middle">
+                            <Zap className="w-2.5 h-2.5" /> FLASH
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>
                       <div className="flex items-center justify-between mt-3">
-                        <span className="font-display font-bold text-primary text-lg">₹{item.price}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-display font-bold text-primary text-lg">₹{isFlash ? flashPrice : item.price}</span>
+                          {isFlash && <span className="text-xs text-muted-foreground line-through">₹{item.price}</span>}
+                        </div>
                         {!item.available ? (
                           <span className="text-xs font-medium text-destructive bg-destructive/10 px-3 py-1.5 rounded-full">Unavailable</span>
                         ) : qty === 0 ? (
