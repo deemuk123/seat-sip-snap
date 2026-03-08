@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { fetchShows, lookupOrdersByPhone } from "@/lib/supabase-orders";
 import { supabase } from "@/integrations/supabase/client";
 import { isInInterval, formatIntervalWindow } from "@/lib/interval-utils";
+import cinemaBanner from "@/assets/cinema-banner.jpg";
 
 const ShowSelection = () => {
   const navigate = useNavigate();
