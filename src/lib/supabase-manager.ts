@@ -72,6 +72,17 @@ export async function updateOrderStatus(
   newStatus: OrderStatus,
   reason?: string
 ): Promise<void> {
+  // Fetch order details before update (for WhatsApp notification)
+  let orderDetails: { order_code: string; total: number; show_snapshot: any } | null = null;
+  if (newStatus === "cancelled") {
+    const { data } = await supabase
+      .from("orders")
+      .select("order_code, total, show_snapshot")
+      .eq("id", orderId)
+      .single();
+    orderDetails = data;
+  }
+
   const { error: orderError } = await supabase
     .from("orders")
     .update({ status: newStatus })
@@ -97,6 +108,17 @@ export async function updateOrderStatus(
       targetType: "order",
       targetId: orderId,
       details: { status: newStatus, reason: reason || null },
+    });
+  }
+
+  // WhatsApp notification for cancellations
+  if (newStatus === "cancelled" && orderDetails) {
+    const snapshot = orderDetails.show_snapshot as any;
+    notifyOrderCancelled({
+      orderCode: orderDetails.order_code,
+      total: orderDetails.total,
+      reason,
+      movieName: snapshot?.movieName || snapshot?.movie_name || "N/A",
     });
   }
 }

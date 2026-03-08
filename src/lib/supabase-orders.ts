@@ -51,6 +51,17 @@ export async function insertOrder(params: {
     status: "received",
   });
 
+  // Send WhatsApp notification (fire and forget)
+  notifyNewOrder({
+    orderCode,
+    total: params.total,
+    itemCount: params.items.reduce((sum, i) => sum + i.quantity, 0),
+    deliveryMode: params.deliveryMode,
+    seatNumber: params.seatNumber,
+    phone: params.phone,
+    movieName: params.show.movieName,
+  });
+
   return {
     id: orderRow.id,
     orderCode: orderRow.order_code,
