@@ -14,7 +14,7 @@ interface ApiShow {
 interface ApiResponse {
   running: ApiShow[]
   upcoming: ApiShow[]
-  latest_events: ApiShow[]
+  latest_events: any[]
   timestamp: string
 }
 
@@ -31,7 +31,6 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Get API settings from database
     const { data: settings, error: settingsError } = await supabase
       .from('api_settings')
       .select('*')
@@ -48,14 +47,13 @@ Deno.serve(async (req) => {
 
     if (!settings?.api_url) {
       return new Response(
-        JSON.stringify({ error: 'API URL not configured. Go to Admin → Settings → Show API Integration to set it.' }),
+        JSON.stringify({ error: 'API URL not configured.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     console.log(`Fetching shows from: ${settings.api_url}`)
 
-    // Fetch from external API
     let apiResponse: ApiResponse
     try {
       const response = await fetch(settings.api_url)
@@ -74,16 +72,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Combine running + upcoming + latest_events into one list
-    const allShows: ApiShow[] = [
-      ...(apiResponse.running || []),
-      ...(apiResponse.upcoming || []),
-      ...(apiResponse.latest_events || []),
-    ]
+    // Only use running + upcoming (latest_events are event logs, not shows)
+    const runningShows = (apiResponse.running || []).map(s => ({ ...s, _status: 'running' as const }))
+    const upcomingShows = (apiResponse.upcoming || []).map(s => ({ ...s, _status: 'upcoming' as const }))
+    const allShows = [...runningShows, ...upcomingShows]
 
-    console.log(`Fetched ${allShows.length} shows from API (running: ${apiResponse.running?.length || 0}, upcoming: ${apiResponse.upcoming?.length || 0}, events: ${apiResponse.latest_events?.length || 0})`)
+    console.log(`Fetched ${allShows.length} shows (running: ${runningShows.length}, upcoming: ${upcomingShows.length})`)
 
-    // OVERWRITE: Nullify FK references, then delete all shows
+    // Overwrite: nullify FK references then delete all shows
     await supabase
       .from('orders')
       .update({ show_id: null })
@@ -98,17 +94,14 @@ Deno.serve(async (req) => {
       console.error('Failed to delete old shows:', deleteError.message)
     }
 
-    // Extract screen number from audi_name (e.g., "Audi 3" -> 3)
     function extractScreenNumber(audiName: string): number {
       const match = audiName.match(/(\d+)/)
       return match ? parseInt(match[1], 10) : 1
     }
 
-    // Today's date for show_time display
     const now = new Date()
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
-    // Build rows — deduplicate by movie_name + show_time + audi_name
     const seen = new Set<string>()
     const showRows = allShows
       .filter((show) => {
@@ -122,12 +115,12 @@ Deno.serve(async (req) => {
         movie_name: show.movie_name,
         show_time: `${today} ${show.show_time}`,
         screen_number: extractScreenNumber(show.audi_name),
-        language: 'Hindi',
-        format: '2D',
+        language: '',
+        format: '',
         is_active: true,
+        status: show._status,
       }))
 
-    // Batch insert
     let processed = 0
     const BATCH_SIZE = 100
     for (let i = 0; i < showRows.length; i += BATCH_SIZE) {
@@ -140,7 +133,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update sync status
     await supabase
       .from('api_settings')
       .update({ last_sync_at: new Date().toISOString(), last_sync_status: 'success' })
