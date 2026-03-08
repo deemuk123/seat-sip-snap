@@ -8,7 +8,10 @@ export interface Show {
   language: string;
   format: string;
   posterUrl: string;
-  status?: "running" | "upcoming";
+  status?: "running" | "upcoming" | "completed";
+  intervalStart?: string;
+  intervalEnd?: string;
+  totalDurationMin?: number;
 }
 
 export interface MenuItem {

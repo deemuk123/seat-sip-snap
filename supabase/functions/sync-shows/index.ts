@@ -5,16 +5,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
+interface ShowSegments {
+  before: { start: string; end: string; duration_min: number }
+  part1: { start: string; end: string; duration_min: number }
+  interval: { start: string; end: string; duration_min: number }
+  part2: { start: string; end: string; duration_min: number }
+  exit: { start: string; end: string; duration_min: number }
+}
+
 interface ApiShow {
   audi_name: string
   movie_name: string
   show_time: string
+  status: 'completed' | 'running' | 'upcoming'
+  segments: ShowSegments
+  total_duration_min: number
 }
 
 interface ApiResponse {
-  running: ApiShow[]
-  upcoming: ApiShow[]
-  latest_events: any[]
+  date: string
+  schedule: ApiShow[]
   timestamp: string
 }
 
@@ -72,14 +82,13 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Only use running + upcoming (latest_events are event logs, not shows)
-    const runningShows = (apiResponse.running || []).map(s => ({ ...s, _status: 'running' as const }))
-    const upcomingShows = (apiResponse.upcoming || []).map(s => ({ ...s, _status: 'upcoming' as const }))
-    const allShows = [...runningShows, ...upcomingShows]
+    const allShows = apiResponse.schedule || []
+    const apiDate = apiResponse.date || new Date().toISOString().slice(0, 10)
 
-    console.log(`Fetched ${allShows.length} shows (running: ${runningShows.length}, upcoming: ${upcomingShows.length})`)
+    console.log(`Fetched ${allShows.length} shows for date ${apiDate}`)
 
-    // Overwrite: nullify FK references then delete all shows
+    // Delete existing shows for this date, then insert fresh
+    // Nullify FK references first
     await supabase
       .from('orders')
       .update({ show_id: null })
@@ -99,9 +108,6 @@ Deno.serve(async (req) => {
       return match ? parseInt(match[1], 10) : 1
     }
 
-    const now = new Date()
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-
     const seen = new Set<string>()
     const showRows = allShows
       .filter((show) => {
@@ -113,12 +119,15 @@ Deno.serve(async (req) => {
       .map((show) => ({
         external_id: `${show.movie_name}-${show.audi_name}-${show.show_time}`,
         movie_name: show.movie_name,
-        show_time: `${today} ${show.show_time}`,
+        show_time: `${apiDate} ${show.show_time}`,
         screen_number: extractScreenNumber(show.audi_name),
         language: '',
         format: '',
         is_active: true,
-        status: show._status,
+        status: show.status === 'completed' ? 'completed' : show.status,
+        interval_start: show.segments?.interval?.start || null,
+        interval_end: show.segments?.interval?.end || null,
+        total_duration_min: show.total_duration_min || null,
       }))
 
     let processed = 0
@@ -138,10 +147,10 @@ Deno.serve(async (req) => {
       .update({ last_sync_at: new Date().toISOString(), last_sync_status: 'success' })
       .eq('id', settings.id)
 
-    console.log(`Sync completed: ${processed} shows inserted`)
+    console.log(`Sync completed: ${processed} shows inserted (${allShows.filter(s => s.status === 'running').length} running, ${allShows.filter(s => s.status === 'upcoming').length} upcoming, ${allShows.filter(s => s.status === 'completed').length} completed)`)
 
     return new Response(
-      JSON.stringify({ success: true, processed, deleted: true }),
+      JSON.stringify({ success: true, processed, date: apiDate }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
