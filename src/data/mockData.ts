@@ -8,6 +8,7 @@ export interface Show {
   language: string;
   format: string;
   posterUrl: string;
+  status?: "running" | "upcoming";
 }
 
 export interface MenuItem {
