@@ -6,12 +6,13 @@ import { fetchSetting } from "@/lib/supabase-admin";
 
 async function assignScratchTier(): Promise<ScratchReward | null> {
   try {
-    // Check if scratch cards are enabled (only toggle stored in settings)
     const configVal = await fetchSetting("scratch_card_config");
     const isEnabled = configVal?.enabled ?? false;
     if (!isEnabled) return null;
 
-    // Fetch all active prizes — probabilities are derived from these
+    const tryAgainWeight = configVal?.try_again_weight ?? 20;
+
+    // Fetch all active prizes
     const { data: allPrizes } = await supabase
       .from("scratch_prizes")
       .select("*")
@@ -31,11 +32,19 @@ async function assignScratchTier(): Promise<ScratchReward | null> {
       return { tier: "none", discountValue: 0 };
     }
 
-    // Calculate total weight across ALL available prizes
-    const totalWeight = available.reduce((s: number, p: any) => s + (p.probability_weight || 1), 0);
+    // Total weight = all prize weights + try again weight
+    const prizeWeight = available.reduce((s: number, p: any) => s + (p.probability_weight || 1), 0);
+    const grandTotal = prizeWeight + tryAgainWeight;
 
-    // Roll a random number to pick a prize directly
-    const roll = Math.random() * totalWeight;
+    // Roll
+    const roll = Math.random() * grandTotal;
+
+    // If roll lands in the "try again" zone
+    if (roll >= prizeWeight) {
+      return { tier: "none", discountValue: 0 };
+    }
+
+    // Otherwise pick a prize
     let cumulative = 0;
     let selectedPrize: any = null;
 

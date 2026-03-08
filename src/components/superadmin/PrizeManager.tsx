@@ -188,20 +188,31 @@ export default function PrizeManager() {
           {isEnabled && (
             <>
               <p className="text-[10px] text-muted-foreground mb-2">
-                Probabilities auto-calculated from active prize weights below:
+                Probabilities auto-calculated from prize weights + Try Again weight:
               </p>
               <div className="grid grid-cols-4 gap-2">
                 {[
                   { label: "🥇 Gold", value: tierProbs[0].pct, color: "bg-yellow-500/20 text-yellow-700" },
                   { label: "🥈 Silver", value: tierProbs[1].pct, color: "bg-gray-300/30 text-gray-600" },
                   { label: "🥉 Bronze", value: tierProbs[2].pct, color: "bg-orange-400/20 text-orange-700" },
-                  { label: "🔄 Try Again", value: activePrizes.length === 0 ? 100 : tryAgainPct, color: "bg-muted text-muted-foreground" },
+                  { label: "🔄 Try Again", value: tryAgainPct, color: "bg-muted text-muted-foreground" },
                 ].map((t) => (
                   <div key={t.label} className={`rounded-md px-2 py-1.5 text-center ${t.color}`}>
                     <p className="text-[10px]">{t.label}</p>
                     <p className="text-sm font-bold">{t.value}%</p>
                   </div>
                 ))}
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <Label className="text-xs whitespace-nowrap">🔄 Try Again Weight:</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={tryAgainWeight}
+                  onChange={(e) => saveTryAgainWeight(Number(e.target.value) || 0)}
+                  className="h-8 text-xs w-24"
+                />
+                <p className="text-[10px] text-muted-foreground">Higher = more "Try Again" outcomes</p>
               </div>
               {activePrizes.length === 0 && (
                 <p className="text-[10px] text-destructive mt-2 font-medium">
