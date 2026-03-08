@@ -10,7 +10,7 @@ import IntervalBoostBanner from "@/components/checkout/IntervalBoostBanner";
 const MenuPage = () => {
   const navigate = useNavigate();
   const { addToCart, updateQuantity, cart, cartTotal, cartCount } = useApp();
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState("Combos");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
 
