@@ -13,11 +13,13 @@ const MenuPage = () => {
   const { addToCart, updateQuantity, cart, cartTotal, cartCount } = useApp();
   const [activeCategory, setActiveCategory] = useState("Combos");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuCategories, setMenuCategories] = useState<string[]>(["All"]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMenuItems().then((data) => {
-      setMenuItems(data);
+    Promise.all([fetchMenuItems(), fetchCategories()]).then(([items, cats]) => {
+      setMenuItems(items);
+      setMenuCategories(["All", ...cats.map(c => c.name)]);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
