@@ -83,14 +83,12 @@ export default function SystemSettings() {
   useEffect(() => {
     (async () => {
       try {
-        const [val, apiRes, scratchVal] = await Promise.all([
+        const [val, apiRes] = await Promise.all([
           fetchSetting("system_config"),
           (supabase as any).from("api_settings").select("*").limit(1).maybeSingle(),
-          fetchSetting("scratch_card_config"),
         ]);
         if (val) setConfig({ ...DEFAULT_CONFIG, ...val });
         if (apiRes.data) setApiSettings(apiRes.data as ApiSettings);
-        if (scratchVal) setScratch({ ...DEFAULT_SCRATCH, ...scratchVal });
       } catch { /* use defaults */ }
       setLoading(false);
     })();
