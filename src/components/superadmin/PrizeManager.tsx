@@ -346,7 +346,7 @@ export default function PrizeManager() {
                           <TableCell className="text-xs font-mono">{prize.probability_weight}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-[10px]">
-                              {totalWeight > 0 ? `${Math.round((prize.probability_weight / totalWeight) * 100)}%` : "0%"}
+                              {grandTotal > 0 ? `${Math.round((prize.probability_weight / grandTotal) * 100)}%` : "0%"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs">
