@@ -41,7 +41,7 @@ export default function OrderCard({ order, onStatusChange, onVerifyDeliver, onCa
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-display font-bold text-foreground text-lg">{order.order_code}</span>
+            <span className="font-display font-bold text-foreground text-lg">Order #{order.id.slice(0, 6).toUpperCase()}</span>
             <Badge variant="outline" className={config.className}>{config.label}</Badge>
             {isOverdue && (
               <Badge variant="outline" className="bg-destructive/20 text-destructive border-destructive/40 text-[10px] animate-pulse">
