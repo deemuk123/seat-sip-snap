@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.check-fraud]
 verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = false
