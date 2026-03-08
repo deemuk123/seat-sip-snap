@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, BarChart3, Settings, TrendingUp, Tag } from "lucide-react";
+import { ArrowLeft, BarChart3, Settings, TrendingUp, Tag, CalendarDays } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
+import DailyReportsDashboard from "@/components/admin/DailyReportsDashboard";
 import SystemSettings from "@/components/admin/SystemSettings";
 import CouponManager from "@/components/admin/CouponManager";
 import IntervalBoostSettings from "@/components/admin/IntervalBoostSettings";
@@ -30,9 +31,12 @@ const AdminPortal = () => {
           </div>
 
           <Tabs defaultValue="analytics" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="analytics" className="flex items-center gap-1.5">
                 <TrendingUp className="w-4 h-4" /> Analytics
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="flex items-center gap-1.5">
+                <CalendarDays className="w-4 h-4" /> Reports
               </TabsTrigger>
               <TabsTrigger value="promos" className="flex items-center gap-1.5">
                 <Tag className="w-4 h-4" /> Promos
@@ -44,6 +48,10 @@ const AdminPortal = () => {
 
             <TabsContent value="analytics">
               <AnalyticsDashboard />
+            </TabsContent>
+
+            <TabsContent value="reports">
+              <DailyReportsDashboard />
             </TabsContent>
 
             <TabsContent value="promos" className="space-y-4">
