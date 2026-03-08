@@ -14,6 +14,7 @@ import CancelOrderDialog from "@/components/manager/CancelOrderDialog";
 import MenuManager from "@/components/manager/MenuManager";
 import QRGenerator from "@/components/manager/QRGenerator";
 import SLATracker from "@/components/manager/SLATracker";
+import { useOrderSound } from "@/hooks/useOrderSound";
 import { toast } from "sonner";
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
