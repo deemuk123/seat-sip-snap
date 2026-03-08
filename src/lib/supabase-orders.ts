@@ -104,7 +104,7 @@ export async function fetchShows() {
     .from("shows")
     .select("*")
     .eq("is_active", true)
-    .order("show_time");
+    .order("show_time", { ascending: true });
 
   if (error) throw error;
   return (data || []).map((s) => ({
