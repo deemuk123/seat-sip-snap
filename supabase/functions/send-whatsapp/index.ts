@@ -33,9 +33,11 @@ serve(async (req) => {
     }
 
     const rawApiUrl = Deno.env.get("WAHA_API_URL") || "https://devlikeaprowaha-production-4380.up.railway.app";
-    const apiUrl = rawApiUrl.replace(/\/+$/, ""); // remove trailing slashes
+    const apiUrl = rawApiUrl.replace(/\/+$/, "");
     const apiKey = Deno.env.get("WAHA_API_KEY");
-    const targetChatId = chatId || Deno.env.get("WAHA_CHAT_ID") || "120363422396487980@g.us";
+    const defaultChatId = "120363422396487980@g.us";
+    const envChatId = Deno.env.get("WAHA_CHAT_ID");
+    const targetChatId = chatId || (envChatId && envChatId !== "default" ? envChatId : defaultChatId);
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "WAHA_API_KEY not configured" }), {
@@ -45,7 +47,7 @@ serve(async (req) => {
     }
 
     const endpoint = `${apiUrl}/api/sendText`;
-    console.log("Sending to WAHA:", { endpoint, targetChatId, textLength: text.length, keyLength: apiKey.length, keyPrefix: apiKey.substring(0, 6) });
+    console.log("Sending to WAHA:", { endpoint, targetChatId, textLength: text.length });
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -58,7 +60,7 @@ serve(async (req) => {
         chatId: targetChatId,
         reply_to: null,
         text,
-        linkPreview: true,
+        linkPreview: false,
         linkPreviewHighQuality: false,
         session: "default",
       }),
