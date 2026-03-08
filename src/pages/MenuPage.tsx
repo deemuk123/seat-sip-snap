@@ -90,6 +90,8 @@ const MenuPage = () => {
           <>
             {filteredItems.map((item) => {
               const qty = getCartQuantity(item.id);
+              const flashPrice = getFlashDiscount(item.id, item.price, flashSales);
+              const isFlash = flashPrice !== null;
               return (
                 <div key={item.id} className="rounded-xl bg-card border border-border p-4">
                   <div className="flex gap-4">
