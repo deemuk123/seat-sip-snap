@@ -184,6 +184,14 @@ export default function MenuManager() {
                 </div>
               </div>
             </div>
+            <div>
+              <Label>Availability Hours <span className="text-xs text-muted-foreground font-normal">(leave empty for all-day)</span></Label>
+              <div className="flex gap-2 items-center">
+                <Input type="time" value={form.available_from} onChange={e => setForm(f => ({ ...f, available_from: e.target.value }))} className="flex-1" placeholder="From" />
+                <span className="text-muted-foreground text-sm">to</span>
+                <Input type="time" value={form.available_until} onChange={e => setForm(f => ({ ...f, available_until: e.target.value }))} className="flex-1" placeholder="Until" />
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={handleSave}>{editing ? "Update" : "Create"}</Button>
