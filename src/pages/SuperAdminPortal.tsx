@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Users, ScrollText } from "lucide-react";
+import { ArrowLeft, Shield, Users, ScrollText, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/superadmin/UserManagement";
 import AuditLogs from "@/components/superadmin/AuditLogs";
+import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
 
 const SuperAdminPortal = () => {
   const navigate = useNavigate();
