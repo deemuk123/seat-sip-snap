@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Save, RefreshCw, CheckCircle2, XCircle, Gift } from "lucide-react";
+import { Save, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface SystemConfig {
