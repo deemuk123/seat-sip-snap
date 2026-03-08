@@ -137,33 +137,57 @@ export default function PrizeManager() {
 
   return (
     <div className="space-y-4">
-      {/* Try Again Probability Banner */}
-      <Card className={`border-2 ${tryAgainProb > 0 ? "border-orange-400/40 bg-orange-50/30 dark:bg-orange-950/10" : "border-primary/30 bg-primary/5"}`}>
+      {/* Enable/Disable + Try Again Probability Banner */}
+      <Card className={`border-2 ${isEnabled ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
         <CardContent className="pt-4 pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-lg">
-                🎰
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${isEnabled ? "bg-primary/20" : "bg-destructive/20"}`}>
+                <Power className={`w-5 h-5 ${isEnabled ? "text-primary" : "text-destructive"}`} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Try Again Probability</p>
+                <p className="text-sm font-semibold text-foreground">Scratch Card System</p>
                 <p className="text-[10px] text-muted-foreground">
-                  Remaining after Gold ({goldProb}%) + Silver ({silverProb}%) + Bronze ({bronzeProb}%)
+                  Only Super Admin can enable or disable scratch cards
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className={`text-2xl font-bold ${tryAgainProb > 0 ? "text-orange-600" : "text-primary"}`}>
-                {tryAgainProb}%
-              </p>
-              <Badge variant={isEnabled ? "default" : "secondary"} className="text-[10px]">
-                {isEnabled ? "Scratch Cards ON" : "Scratch Cards OFF"}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium ${isEnabled ? "text-primary" : "text-destructive"}`}>
+                {isEnabled ? "ON" : "OFF"}
+              </span>
+              <Switch
+                checked={isEnabled}
+                onCheckedChange={async (v) => {
+                  const updated = { ...scratchConfig, enabled: v };
+                  await upsertSetting("scratch_card_config", updated);
+                  setScratchConfig(updated);
+                  toast.success(v ? "Scratch cards enabled" : "Scratch cards disabled");
+                }}
+              />
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {[
-              { label: "🥇 Gold", value: goldProb, color: "bg-yellow-500/20 text-yellow-700" },
+
+          {isEnabled && (
+            <>
+              <p className="text-[10px] text-muted-foreground mb-2">
+                Tier probabilities (configured in Admin Settings). Remaining = Try Again.
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: "🥇 Gold", value: goldProb, color: "bg-yellow-500/20 text-yellow-700" },
+                  { label: "🥈 Silver", value: silverProb, color: "bg-gray-300/30 text-gray-600" },
+                  { label: "🥉 Bronze", value: bronzeProb, color: "bg-orange-400/20 text-orange-700" },
+                  { label: "🔄 Try Again", value: tryAgainProb, color: "bg-muted text-muted-foreground" },
+                ].map((t) => (
+                  <div key={t.label} className={`rounded-md px-2 py-1.5 text-center ${t.color}`}>
+                    <p className="text-[10px]">{t.label}</p>
+                    <p className="text-sm font-bold">{t.value}%</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
               { label: "🥈 Silver", value: silverProb, color: "bg-gray-300/30 text-gray-600" },
               { label: "🥉 Bronze", value: bronzeProb, color: "bg-orange-400/20 text-orange-700" },
               { label: "🔄 Try Again", value: tryAgainProb, color: "bg-muted text-muted-foreground" },
