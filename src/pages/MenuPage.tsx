@@ -83,7 +83,7 @@ const MenuPage = () => {
         {loading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : (
-          <AnimatePresence mode="popLayout">
+          <>
             {filteredItems.map((item) => {
               const qty = getCartQuantity(item.id);
               return (
