@@ -424,6 +424,8 @@ export type Database = {
           is_active: boolean
           label: string
           max_quantity: number
+          probability_weight: number
+          selection_mode: string
           sort_order: number
           tier: string
           used_count: number
@@ -436,6 +438,8 @@ export type Database = {
           is_active?: boolean
           label?: string
           max_quantity?: number
+          probability_weight?: number
+          selection_mode?: string
           sort_order?: number
           tier: string
           used_count?: number
@@ -448,6 +452,8 @@ export type Database = {
           is_active?: boolean
           label?: string
           max_quantity?: number
+          probability_weight?: number
+          selection_mode?: string
           sort_order?: number
           tier?: string
           used_count?: number
