@@ -31,9 +31,12 @@ const SuperAdminPortal = () => {
           </div>
 
           <Tabs defaultValue="orders" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="orders" className="flex items-center gap-1.5">
                 <ClipboardList className="w-4 h-4" /> Orders
+              </TabsTrigger>
+              <TabsTrigger value="coupons" className="flex items-center gap-1.5">
+                <Ticket className="w-4 h-4" /> Coupons
               </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-1.5">
                 <Users className="w-4 h-4" /> Users
