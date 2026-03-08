@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Film, Clock, Monitor, Languages, Sparkles, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Order, Show } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { fetchShows, lookupOrdersByPhone } from "@/lib/supabase-orders";
+import { supabase } from "@/integrations/supabase/client";
 
 const ShowSelection = () => {
   const navigate = useNavigate();
-  const { selectShow, setCurrentOrder } = useApp();
+  const [searchParams] = useSearchParams();
+  const { selectShow, setCurrentOrder, setDeliveryMode, setSeatNumber } = useApp();
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupPhone, setLookupPhone] = useState("");
   const [foundOrders, setFoundOrders] = useState<Order[] | null>(null);
@@ -20,10 +22,29 @@ const ShowSelection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loadingShows, setLoadingShows] = useState(true);
 
+  // QR deep-link: auto-redirect if show & seat params present
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false);
+
   useEffect(() => {
+    const showParam = searchParams.get("show");
+    const seatParam = searchParams.get("seat");
+
     fetchShows().then((data) => {
       setShows(data);
       setLoadingShows(false);
+
+      // Handle QR deep-link
+      if (showParam && seatParam && !deepLinkHandled) {
+        const matchedShow = data.find(s => s.id === showParam);
+        if (matchedShow) {
+          setDeepLinkHandled(true);
+          selectShow(matchedShow);
+          setDeliveryMode("seat");
+          setSeatNumber(seatParam.toUpperCase());
+          navigate("/menu", { replace: true });
+          return;
+        }
+      }
     }).catch(() => setLoadingShows(false));
   }, []);
 
