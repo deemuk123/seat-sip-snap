@@ -69,9 +69,15 @@ export default function PrizeManager() {
 
   const toggleEnabled = async (v: boolean) => {
     const current = await fetchSetting("scratch_card_config");
-    await upsertSetting("scratch_card_config", { ...(current || {}), enabled: v });
+    await upsertSetting("scratch_card_config", { ...(current || {}), enabled: v, try_again_weight: tryAgainWeight });
     setIsEnabled(v);
     toast.success(v ? "Scratch cards enabled" : "Scratch cards disabled");
+  };
+
+  const saveTryAgainWeight = async (w: number) => {
+    setTryAgainWeight(w);
+    const current = await fetchSetting("scratch_card_config");
+    await upsertSetting("scratch_card_config", { ...(current || {}), try_again_weight: w });
   };
 
   const addPrize = async () => {
