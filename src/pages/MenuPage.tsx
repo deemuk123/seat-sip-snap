@@ -70,8 +70,13 @@ const MenuPage = () => {
         </div>
       </div>
 
+      {/* Interval Boost Banner */}
+      <div className="px-4 pt-4">
+        <IntervalBoostBanner />
+      </div>
+
       {/* Menu Items */}
-      <div className="px-4 pt-4 space-y-3">
+      <div className="px-4 pt-2 space-y-3">
         {loading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : (
