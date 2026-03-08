@@ -1,0 +1,1 @@
+ALTER TABLE public.shows ADD COLUMN status TEXT NOT NULL DEFAULT 'upcoming';
