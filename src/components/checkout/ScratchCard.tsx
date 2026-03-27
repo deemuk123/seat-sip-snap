@@ -105,6 +105,28 @@ export default function ScratchCard({ reward, onScratched }: ScratchCardProps) {
     if (!revealed) initCanvas();
   }, [initCanvas, revealed]);
 
+  const scratchCountRef = useRef(0);
+  const lastCheckRef = useRef(0);
+
+  const checkScratchPercent = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return 0;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return 0;
+
+    // Sample every 8th pixel instead of all pixels
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    const totalPixels = data.length / 4;
+    let transparent = 0;
+    let sampled = 0;
+    for (let i = 3; i < data.length; i += 32) { // step 32 = every 8th pixel's alpha
+      sampled++;
+      if (data[i] === 0) transparent++;
+    }
+    return sampled > 0 ? transparent / sampled : 0;
+  }, []);
+
   const scratch = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas || revealed) return;
@@ -121,20 +143,19 @@ export default function ScratchCard({ reward, onScratched }: ScratchCardProps) {
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
 
-    // Calculate scratch percentage
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let transparent = 0;
-    for (let i = 3; i < imageData.data.length; i += 4) {
-      if (imageData.data[i] === 0) transparent++;
-    }
-    const percent = transparent / (imageData.data.length / 4);
-    setScratchPercent(percent);
+    // Only check percentage every 5 strokes
+    scratchCountRef.current++;
+    if (scratchCountRef.current - lastCheckRef.current >= 5) {
+      lastCheckRef.current = scratchCountRef.current;
+      const percent = checkScratchPercent();
+      setScratchPercent(percent);
 
-    if (percent > SCRATCH_THRESHOLD && !revealed) {
-      setRevealed(true);
-      onScratched?.();
+      if (percent > SCRATCH_THRESHOLD && !revealed) {
+        setRevealed(true);
+        onScratched?.();
+      }
     }
-  }, [revealed, onScratched]);
+  }, [revealed, onScratched, checkScratchPercent]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isScratching) return;
