@@ -14,7 +14,48 @@ function toWhatsAppChatId(phone: string): string {
   return `${withCountry}@c.us`
 }
 
-async function sendWhatsAppOtp(phone: string, otp: string): Promise<{ ok: boolean; error?: string }> {
+interface OrderContext {
+  movieName?: string
+  showTime?: string
+  deliveryMode?: 'seat' | 'counter'
+  seatNumber?: string
+  items?: { name: string; quantity: number; price: number }[]
+  total?: number
+}
+
+function buildOtpMessage(otp: string, ctx?: OrderContext): string {
+  const lines: string[] = []
+  // OTP on top
+  lines.push(`🔐 *OTP: ${otp}*`)
+  lines.push(`Valid for 3 minutes. Do not share this code.`)
+
+  // Order details on bottom (only if provided)
+  if (ctx && (ctx.items?.length || ctx.total != null || ctx.movieName)) {
+    lines.push('')
+    lines.push('━━━━━━━━━━━━━━━━━━')
+    lines.push('🧾 *Order Summary*')
+    if (ctx.movieName) lines.push(`🎬 ${ctx.movieName}${ctx.showTime ? ` · ${ctx.showTime}` : ''}`)
+    if (ctx.deliveryMode === 'seat' && ctx.seatNumber) {
+      lines.push(`🪑 Seat Delivery — ${ctx.seatNumber}`)
+    } else if (ctx.deliveryMode === 'counter') {
+      lines.push(`🏪 Counter Pickup`)
+    }
+    if (ctx.items?.length) {
+      lines.push('')
+      for (const i of ctx.items) {
+        lines.push(`• ${i.name} x${i.quantity} — ₹${(i.price * i.quantity).toFixed(2)}`)
+      }
+    }
+    if (ctx.total != null) {
+      lines.push('')
+      lines.push(`💰 *Total: ₹${ctx.total.toFixed(2)}*`)
+    }
+  }
+
+  return lines.join('\n')
+}
+
+async function sendWhatsAppOtp(phone: string, otp: string, ctx?: OrderContext): Promise<{ ok: boolean; error?: string }> {
   const rawApiUrl = Deno.env.get('WAHA_API_URL') || ''
   const apiUrl = rawApiUrl.replace(/\/+$/, '')
   const apiKey = Deno.env.get('WAHA_API_KEY')
@@ -24,7 +65,7 @@ async function sendWhatsAppOtp(phone: string, otp: string): Promise<{ ok: boolea
   }
 
   const chatId = toWhatsAppChatId(phone)
-  const text = `Your Big Movies OTP is *${otp}*.\nValid for 3 minutes. Do not share this code with anyone.`
+  const text = buildOtpMessage(otp, ctx)
 
   try {
     const resp = await fetch(`${apiUrl}/api/sendText`, {
@@ -63,7 +104,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { phone } = await req.json()
+    const { phone, order } = await req.json() as { phone: string; order?: OrderContext }
 
     if (!phone || phone.length < 10) {
       return new Response(
@@ -107,7 +148,7 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError
 
     // Send via WhatsApp (WAHA)
-    const sendResult = await sendWhatsAppOtp(phone, otpCode)
+    const sendResult = await sendWhatsAppOtp(phone, otpCode, order)
     if (!sendResult.ok) {
       return new Response(
         JSON.stringify({ error: `Failed to send OTP via WhatsApp. ${sendResult.error || ''}`.trim() }),
