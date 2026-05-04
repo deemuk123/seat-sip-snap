@@ -24,7 +24,10 @@ const Checkout = () => {
   const [verifying, setVerifying] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
   const [otpExpiry, setOtpExpiry] = useState(0);
+  const [attemptsRemaining, setAttemptsRemaining] = useState(3);
+  const [otpLocked, setOtpLocked] = useState(false);
 
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -49,12 +52,20 @@ const Checkout = () => {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  // OTP 180s expiry countdown
+  // OTP expiry countdown — synced with server's expires_at timestamp
   useEffect(() => {
-    if (otpExpiry <= 0) return;
-    const timer = setTimeout(() => setOtpExpiry(e => e - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [otpExpiry]);
+    if (!otpExpiresAt) {
+      setOtpExpiry(0);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000));
+      setOtpExpiry(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [otpExpiresAt]);
 
   const handleSendOtp = useCallback(async () => {
     if (phoneInput.length < 10 || sendingOtp) return;
@@ -69,8 +80,14 @@ const Checkout = () => {
       setPhone(phoneInput);
       setOtpSent(true);
       setCooldown(30);
-      setOtpExpiry(180);
+      // Sync expiry to server timestamp; fall back to expires_in or 180s
+      const serverExpiry = data?.expires_at
+        ? new Date(data.expires_at).getTime()
+        : Date.now() + (data?.expires_in ?? 180) * 1000;
+      setOtpExpiresAt(serverExpiry);
       setOtp("");
+      setAttemptsRemaining(3);
+      setOtpLocked(false);
       toast.success("OTP sent to your WhatsApp");
     } catch (err: any) {
       toast.error(err.message || "Failed to send OTP");
@@ -79,7 +96,7 @@ const Checkout = () => {
   }, [phoneInput, sendingOtp, setPhone]);
 
   const handleVerifyAndOrder = async () => {
-    if (otp.length < 6) return;
+    if (otp.length < 6 || otpLocked) return;
     setVerifying(true);
     try {
       // Verify OTP
@@ -91,13 +108,22 @@ const Checkout = () => {
         if (error) throw error;
         verifyData = data;
       } catch (verifyErr: any) {
-        // Try to parse error body for user-facing message
         toast.error("OTP verification failed. Please try again.");
         setVerifying(false);
         return;
       }
 
       if (!verifyData?.verified) {
+        // Sync attempts/lock state from server response
+        if (typeof verifyData?.attempts_remaining === "number") {
+          setAttemptsRemaining(verifyData.attempts_remaining);
+        }
+        if (verifyData?.code === "locked") {
+          setOtpLocked(true);
+        }
+        if (verifyData?.code === "expired") {
+          setOtpExpiresAt(Date.now() - 1000);
+        }
         toast.error(verifyData?.error || "OTP verification failed");
         setVerifying(false);
         return;
@@ -266,19 +292,42 @@ const Checkout = () => {
         ) : (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <label className="text-sm font-medium text-foreground mb-2 block">Enter OTP sent to your WhatsApp (+977 {phoneInput})</label>
-            <p className={`text-xs mb-2 font-mono inline-block rounded-lg px-3 py-1.5 ${otpExpiry > 0 ? "text-primary bg-primary/10" : "text-destructive bg-destructive/10"}`}>
-              {otpExpiry > 0
-                ? `OTP expires in ${Math.floor(otpExpiry / 60)}:${String(otpExpiry % 60).padStart(2, "0")}`
-                : "OTP expired — tap Resend"}
-            </p>
-            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit OTP" className="w-full rounded-lg bg-card border border-border px-4 py-3 text-foreground text-center text-2xl tracking-[0.5em] font-mono placeholder:text-muted-foreground placeholder:text-base placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary" maxLength={6} />
-            <button
-              onClick={handleSendOtp}
-              disabled={cooldown > 0 || sendingOtp}
-              className="mt-2 text-xs text-primary disabled:text-muted-foreground"
-            >
-              {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <p className={`text-xs font-mono inline-block rounded-lg px-3 py-1.5 ${otpExpiry > 0 ? "text-primary bg-primary/10" : "text-destructive bg-destructive/10"}`}>
+                {otpExpiry > 0
+                  ? `OTP expires in ${Math.floor(otpExpiry / 60)}:${String(otpExpiry % 60).padStart(2, "0")}`
+                  : "OTP expired — tap Resend"}
+              </p>
+              {otpSent && otpExpiry > 0 && !otpLocked && attemptsRemaining < 3 && (
+                <p className="text-xs font-mono inline-block rounded-lg px-3 py-1.5 text-amber-500 bg-amber-500/10">
+                  {attemptsRemaining} attempt{attemptsRemaining === 1 ? "" : "s"} left
+                </p>
+              )}
+              {otpLocked && (
+                <p className="text-xs font-mono inline-block rounded-lg px-3 py-1.5 text-destructive bg-destructive/10">
+                  Locked — request a new OTP
+                </p>
+              )}
+            </div>
+            <input
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="Enter 6-digit OTP"
+              disabled={otpLocked || otpExpiry <= 0}
+              className="w-full rounded-lg bg-card border border-border px-4 py-3 text-foreground text-center text-2xl tracking-[0.5em] font-mono placeholder:text-muted-foreground placeholder:text-base placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              maxLength={6}
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Didn't receive it?</span>
+              <button
+                onClick={handleSendOtp}
+                disabled={cooldown > 0 || sendingOtp}
+                className="text-xs font-semibold text-primary disabled:text-muted-foreground"
+              >
+                {sendingOtp ? "Sending…" : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
+              </button>
+            </div>
           </motion.div>
         )}
       </div>
@@ -286,7 +335,7 @@ const Checkout = () => {
       {/* Place Order */}
       {otpSent && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="fixed bottom-0 left-0 right-0 p-4 glass-surface border-t border-border">
-          <button onClick={handleVerifyAndOrder} disabled={otp.length < 6 || verifying || otpExpiry <= 0} className="w-full rounded-xl cinema-gradient-primary py-4 text-primary-foreground font-display font-semibold text-lg disabled:opacity-40 active:scale-[0.98] transition-all">
+          <button onClick={handleVerifyAndOrder} disabled={otp.length < 6 || verifying || otpExpiry <= 0 || otpLocked} className="w-full rounded-xl cinema-gradient-primary py-4 text-primary-foreground font-display font-semibold text-lg disabled:opacity-40 active:scale-[0.98] transition-all">
             {verifying ? "Placing Order..." : `Place Order · ₹${finalTotal}`}
           </button>
         </motion.div>

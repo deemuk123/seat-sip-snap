@@ -41,34 +41,43 @@ Deno.serve(async (req) => {
 
     if (!record) {
       return new Response(
-        JSON.stringify({ verified: false, error: 'No OTP found. Please request a new one.' }),
+        JSON.stringify({ verified: false, error: 'No OTP found. Please request a new one.', code: 'no_otp' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (new Date(record.expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ verified: false, error: 'OTP expired. Please request a new one.' }),
+        JSON.stringify({ verified: false, error: 'OTP expired. Please request a new one.', code: 'expired', expires_at: record.expires_at }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (record.attempts >= 3) {
       return new Response(
-        JSON.stringify({ verified: false, error: 'Maximum attempts exceeded. Please request a new OTP.' }),
+        JSON.stringify({ verified: false, error: 'Maximum attempts exceeded. Please request a new OTP.', code: 'locked', attempts_remaining: 0 }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (record.otp_code !== otp) {
+      const newAttempts = record.attempts + 1
       await supabase
         .from('otp_verifications')
-        .update({ attempts: record.attempts + 1 })
+        .update({ attempts: newAttempts })
         .eq('id', record.id)
 
-      const remaining = 2 - record.attempts
+      const remaining = Math.max(0, 3 - newAttempts)
+      const locked = remaining === 0
       return new Response(
-        JSON.stringify({ verified: false, error: `Incorrect OTP. ${remaining > 0 ? `${remaining} attempts remaining.` : 'No attempts remaining.'}` }),
+        JSON.stringify({
+          verified: false,
+          code: locked ? 'locked' : 'wrong_otp',
+          attempts_remaining: remaining,
+          error: locked
+            ? 'Maximum attempts exceeded. Please request a new OTP.'
+            : `Incorrect OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
