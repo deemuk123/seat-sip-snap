@@ -64,12 +64,6 @@ serve(async (req) => {
       });
     }
 
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "WAHA_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const endpoint = `${apiUrl}/api/sendText`;
     console.log("Sending to WAHA:", { endpoint, targetChatId, textLength: text.length });
