@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError
 
     // Send via WhatsApp (WAHA)
-    const sendResult = await sendWhatsAppOtp(phone, otpCode, order)
+    const sendResult = await sendWhatsAppOtp(phone, otpCode, supabase, order)
     if (!sendResult.ok) {
       return new Response(
         JSON.stringify({ error: `Failed to send OTP via WhatsApp. ${sendResult.error || ''}`.trim() }),
