@@ -7,6 +7,7 @@ import DailyReportsDashboard from "@/components/admin/DailyReportsDashboard";
 import SystemSettings from "@/components/admin/SystemSettings";
 import CouponManager from "@/components/admin/CouponManager";
 import IntervalBoostSettings from "@/components/admin/IntervalBoostSettings";
+import WhatsAppSettings from "@/components/superadmin/WhatsAppSettings";
 
 const AdminPortal = () => {
   const navigate = useNavigate();
@@ -59,8 +60,9 @@ const AdminPortal = () => {
               <IntervalBoostSettings />
             </TabsContent>
 
-            <TabsContent value="settings">
+            <TabsContent value="settings" className="space-y-4">
               <SystemSettings />
+              <WhatsAppSettings />
             </TabsContent>
           </Tabs>
         </motion.div>

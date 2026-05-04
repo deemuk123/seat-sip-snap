@@ -126,10 +126,18 @@ Deno.serve(async (req) => {
 
     // Send WhatsApp daily summary
     try {
-      const wahaApiUrl = (Deno.env.get('WAHA_API_URL') || 'https://devlikeaprowaha-production-4380.up.railway.app').replace(/\/+$/, '')
-      const wahaApiKey = Deno.env.get('WAHA_API_KEY')
-      const wahaChatId = Deno.env.get('WAHA_CHAT_ID')
-      const chatId = (wahaChatId && wahaChatId !== 'default') ? wahaChatId : '120363422396487980@g.us'
+      let dbUrl = '', dbKey = '', dbChat = ''
+      try {
+        const { data: cfg } = await supabase.from('settings').select('value').eq('key', 'waha_config').maybeSingle()
+        const v = (cfg?.value || {}) as { api_url?: string; api_key?: string; default_chat_id?: string }
+        dbUrl = v.api_url || ''
+        dbKey = v.api_key || ''
+        dbChat = v.default_chat_id || ''
+      } catch (_) {}
+      const wahaApiUrl = (dbUrl || Deno.env.get('WAHA_API_URL') || 'https://devlikeaprowaha-production-4380.up.railway.app').replace(/\/+$/, '')
+      const wahaApiKey = dbKey || Deno.env.get('WAHA_API_KEY') || ''
+      const envChatId = Deno.env.get('WAHA_CHAT_ID')
+      const chatId = dbChat || (envChatId && envChatId !== 'default' ? envChatId : '120363422396487980@g.us')
 
       if (wahaApiKey) {
         const whatsappText = [

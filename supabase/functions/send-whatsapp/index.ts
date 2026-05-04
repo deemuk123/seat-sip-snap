@@ -1,9 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+async function getWahaConfig() {
+  let dbUrl = "", dbKey = "", dbChat = "";
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const { data } = await supabase.from("settings").select("value").eq("key", "waha_config").maybeSingle();
+    const v = (data?.value || {}) as { api_url?: string; api_key?: string; default_chat_id?: string };
+    dbUrl = v.api_url || "";
+    dbKey = v.api_key || "";
+    dbChat = v.default_chat_id || "";
+  } catch (_) {}
+  return {
+    apiUrl: (dbUrl || Deno.env.get("WAHA_API_URL") || "https://devlikeaprowaha-production-4380.up.railway.app").replace(/\/+$/, ""),
+    apiKey: dbKey || Deno.env.get("WAHA_API_KEY") || "",
+    defaultChatId: dbChat || Deno.env.get("WAHA_CHAT_ID") || "120363422396487980@g.us",
+  };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -32,19 +54,16 @@ serve(async (req) => {
       });
     }
 
-    const rawApiUrl = Deno.env.get("WAHA_API_URL") || "https://devlikeaprowaha-production-4380.up.railway.app";
-    const apiUrl = rawApiUrl.replace(/\/+$/, "");
-    const apiKey = Deno.env.get("WAHA_API_KEY");
-    const defaultChatId = "120363422396487980@g.us";
-    const envChatId = Deno.env.get("WAHA_CHAT_ID");
-    const targetChatId = chatId || (envChatId && envChatId !== "default" ? envChatId : defaultChatId);
+    const { apiUrl, apiKey, defaultChatId } = await getWahaConfig();
+    const targetChatId = chatId || defaultChatId;
 
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "WAHA_API_KEY not configured" }), {
+      return new Response(JSON.stringify({ error: "WAHA API key not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const endpoint = `${apiUrl}/api/sendText`;
     console.log("Sending to WAHA:", { endpoint, targetChatId, textLength: text.length });
