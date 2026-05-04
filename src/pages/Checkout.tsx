@@ -49,7 +49,7 @@ const Checkout = () => {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  // OTP 60s expiry countdown
+  // OTP 180s expiry countdown
   useEffect(() => {
     if (otpExpiry <= 0) return;
     const timer = setTimeout(() => setOtpExpiry(e => e - 1), 1000);
@@ -69,7 +69,7 @@ const Checkout = () => {
       setPhone(phoneInput);
       setOtpSent(true);
       setCooldown(30);
-      setOtpExpiry(60);
+      setOtpExpiry(180);
       setOtp("");
       toast.success("OTP sent to your WhatsApp");
     } catch (err: any) {
@@ -268,7 +268,7 @@ const Checkout = () => {
             <label className="text-sm font-medium text-foreground mb-2 block">Enter OTP sent to your WhatsApp (+977 {phoneInput})</label>
             <p className={`text-xs mb-2 font-mono inline-block rounded-lg px-3 py-1.5 ${otpExpiry > 0 ? "text-primary bg-primary/10" : "text-destructive bg-destructive/10"}`}>
               {otpExpiry > 0
-                ? `OTP expires in 0:${String(otpExpiry).padStart(2, "0")}`
+                ? `OTP expires in ${Math.floor(otpExpiry / 60)}:${String(otpExpiry % 60).padStart(2, "0")}`
                 : "OTP expired — tap Resend"}
             </p>
             <input type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit OTP" className="w-full rounded-lg bg-card border border-border px-4 py-3 text-foreground text-center text-2xl tracking-[0.5em] font-mono placeholder:text-muted-foreground placeholder:text-base placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary" maxLength={6} />
