@@ -62,12 +62,9 @@ const Checkout = () => {
       setPhone(phoneInput);
       setOtpSent(true);
       setCooldown(30);
-
-      if (data?.otp) {
-        setSimulatedOtp(data.otp);
-      } else {
-        toast.success("OTP sent to your phone");
-      }
+      setOtpExpiry(60);
+      setOtp("");
+      toast.success("OTP sent to your WhatsApp");
     } catch (err: any) {
       toast.error(err.message || "Failed to send OTP");
     }
