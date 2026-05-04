@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'OTP sent via WhatsApp', expires_in: 180 }),
+      JSON.stringify({ success: true, message: 'OTP sent via WhatsApp', expires_in: 180, expires_at: expiresAt }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
