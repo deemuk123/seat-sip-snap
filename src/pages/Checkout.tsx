@@ -52,12 +52,20 @@ const Checkout = () => {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  // OTP 180s expiry countdown
+  // OTP expiry countdown — synced with server's expires_at timestamp
   useEffect(() => {
-    if (otpExpiry <= 0) return;
-    const timer = setTimeout(() => setOtpExpiry(e => e - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [otpExpiry]);
+    if (!otpExpiresAt) {
+      setOtpExpiry(0);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000));
+      setOtpExpiry(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [otpExpiresAt]);
 
   const handleSendOtp = useCallback(async () => {
     if (phoneInput.length < 10 || sendingOtp) return;
@@ -72,8 +80,14 @@ const Checkout = () => {
       setPhone(phoneInput);
       setOtpSent(true);
       setCooldown(30);
-      setOtpExpiry(180);
+      // Sync expiry to server timestamp; fall back to expires_in or 180s
+      const serverExpiry = data?.expires_at
+        ? new Date(data.expires_at).getTime()
+        : Date.now() + (data?.expires_in ?? 180) * 1000;
+      setOtpExpiresAt(serverExpiry);
       setOtp("");
+      setAttemptsRemaining(3);
+      setOtpLocked(false);
       toast.success("OTP sent to your WhatsApp");
     } catch (err: any) {
       toast.error(err.message || "Failed to send OTP");
