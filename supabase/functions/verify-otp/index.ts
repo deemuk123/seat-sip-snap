@@ -26,11 +26,13 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
+    // Find the most recent OTP for this phone (verified or not),
+    // so a successful verify can be retried within the 60s validity window
+    // if the subsequent order placement failed for any reason.
     const { data: record, error: fetchError } = await supabase
       .from('otp_verifications')
       .select('*')
       .eq('phone', phone)
-      .eq('verified', false)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()

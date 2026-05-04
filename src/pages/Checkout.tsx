@@ -123,10 +123,16 @@ const Checkout = () => {
       }
 
       // Place order
+      if (!selectedShow || !deliveryMode) {
+        toast.error("Show or delivery details missing. Please reselect.");
+        setVerifying(false);
+        navigate("/");
+        return;
+      }
       const order = await insertOrder({
-        show: selectedShow!,
+        show: selectedShow,
         items: [...cart],
-        deliveryMode: deliveryMode!,
+        deliveryMode: deliveryMode,
         seatNumber: seatNumber || undefined,
         phone: phoneInput,
         total: finalTotal,
