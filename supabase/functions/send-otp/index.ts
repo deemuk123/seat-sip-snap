@@ -5,6 +5,58 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
+// Format a local 10-digit phone number to WAHA chatId.
+// Defaults to Nepal (+977) prefix for this project.
+function toWhatsAppChatId(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  // If user already entered country code (e.g. 977XXXXXXXXXX), keep it; otherwise prepend 977.
+  const withCountry = digits.length > 10 ? digits : `977${digits}`
+  return `${withCountry}@c.us`
+}
+
+async function sendWhatsAppOtp(phone: string, otp: string): Promise<{ ok: boolean; error?: string }> {
+  const rawApiUrl = Deno.env.get('WAHA_API_URL') || ''
+  const apiUrl = rawApiUrl.replace(/\/+$/, '')
+  const apiKey = Deno.env.get('WAHA_API_KEY')
+
+  if (!apiUrl || !apiKey) {
+    return { ok: false, error: 'WAHA not configured' }
+  }
+
+  const chatId = toWhatsAppChatId(phone)
+  const text = `Your Big Movies OTP is *${otp}*.\nValid for 60 seconds. Do not share this code with anyone.`
+
+  try {
+    const resp = await fetch(`${apiUrl}/api/sendText`, {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'X-Api-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chatId,
+        reply_to: null,
+        text,
+        linkPreview: false,
+        linkPreviewHighQuality: false,
+        session: 'default',
+      }),
+    })
+
+    const body = await resp.text()
+    console.log('WAHA OTP response:', resp.status, body)
+
+    if (!resp.ok) {
+      return { ok: false, error: `WAHA ${resp.status}: ${body.slice(0, 200)}` }
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('WAHA send error:', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'WAHA request failed' }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -26,7 +78,7 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Rate limit: check if OTP was sent in last 30 seconds
+    // Rate limit: 30 seconds between OTP requests
     const thirtySecsAgo = new Date(Date.now() - 30000).toISOString()
     const { data: recent } = await supabase
       .from('otp_verifications')
@@ -42,11 +94,10 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Generate 6-digit OTP
+    // Generate 6-digit OTP, valid for 60 seconds
     const otpCode = String(Math.floor(100000 + Math.random() * 900000))
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+    const expiresAt = new Date(Date.now() + 60 * 1000).toISOString()
 
-    // Store OTP
     const { error: insertError } = await supabase.from('otp_verifications').insert({
       phone,
       otp_code: otpCode,
@@ -55,12 +106,17 @@ Deno.serve(async (req) => {
 
     if (insertError) throw insertError
 
-    // TODO: When SMS provider is configured, send OTP via SMS here
-    // For now, return OTP in response (simulated mode)
-    console.log(`OTP for ${phone}: ${otpCode}`)
+    // Send via WhatsApp (WAHA)
+    const sendResult = await sendWhatsAppOtp(phone, otpCode)
+    if (!sendResult.ok) {
+      return new Response(
+        JSON.stringify({ error: `Failed to send OTP via WhatsApp. ${sendResult.error || ''}`.trim() }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     return new Response(
-      JSON.stringify({ success: true, otp: otpCode, message: 'OTP sent (simulated mode)' }),
+      JSON.stringify({ success: true, message: 'OTP sent via WhatsApp', expires_in: 60 }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

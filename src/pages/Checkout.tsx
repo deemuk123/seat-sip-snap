@@ -24,7 +24,7 @@ const Checkout = () => {
   const [verifying, setVerifying] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const [simulatedOtp, setSimulatedOtp] = useState<string | null>(null);
+  const [otpExpiry, setOtpExpiry] = useState(0);
 
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -49,6 +49,13 @@ const Checkout = () => {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
+  // OTP 60s expiry countdown
+  useEffect(() => {
+    if (otpExpiry <= 0) return;
+    const timer = setTimeout(() => setOtpExpiry(e => e - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [otpExpiry]);
+
   const handleSendOtp = useCallback(async () => {
     if (phoneInput.length < 10 || sendingOtp) return;
     setSendingOtp(true);
@@ -62,12 +69,9 @@ const Checkout = () => {
       setPhone(phoneInput);
       setOtpSent(true);
       setCooldown(30);
-
-      if (data?.otp) {
-        setSimulatedOtp(data.otp);
-      } else {
-        toast.success("OTP sent to your phone");
-      }
+      setOtpExpiry(60);
+      setOtp("");
+      toast.success("OTP sent to your WhatsApp");
     } catch (err: any) {
       toast.error(err.message || "Failed to send OTP");
     }
@@ -255,12 +259,12 @@ const Checkout = () => {
           </div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <label className="text-sm font-medium text-foreground mb-2 block">Enter OTP sent to +91 {phoneInput}</label>
-            {simulatedOtp && (
-              <p className="text-xs text-primary mb-2 font-mono bg-primary/10 rounded-lg px-3 py-1.5 inline-block">
-                Demo OTP: {simulatedOtp}
-              </p>
-            )}
+            <label className="text-sm font-medium text-foreground mb-2 block">Enter OTP sent to your WhatsApp (+977 {phoneInput})</label>
+            <p className={`text-xs mb-2 font-mono inline-block rounded-lg px-3 py-1.5 ${otpExpiry > 0 ? "text-primary bg-primary/10" : "text-destructive bg-destructive/10"}`}>
+              {otpExpiry > 0
+                ? `OTP expires in 0:${String(otpExpiry).padStart(2, "0")}`
+                : "OTP expired — tap Resend"}
+            </p>
             <input type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit OTP" className="w-full rounded-lg bg-card border border-border px-4 py-3 text-foreground text-center text-2xl tracking-[0.5em] font-mono placeholder:text-muted-foreground placeholder:text-base placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary" maxLength={6} />
             <button
               onClick={handleSendOtp}
@@ -276,7 +280,7 @@ const Checkout = () => {
       {/* Place Order */}
       {otpSent && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="fixed bottom-0 left-0 right-0 p-4 glass-surface border-t border-border">
-          <button onClick={handleVerifyAndOrder} disabled={otp.length < 6 || verifying} className="w-full rounded-xl cinema-gradient-primary py-4 text-primary-foreground font-display font-semibold text-lg disabled:opacity-40 active:scale-[0.98] transition-all">
+          <button onClick={handleVerifyAndOrder} disabled={otp.length < 6 || verifying || otpExpiry <= 0} className="w-full rounded-xl cinema-gradient-primary py-4 text-primary-foreground font-display font-semibold text-lg disabled:opacity-40 active:scale-[0.98] transition-all">
             {verifying ? "Placing Order..." : `Place Order · ₹${finalTotal}`}
           </button>
         </motion.div>
