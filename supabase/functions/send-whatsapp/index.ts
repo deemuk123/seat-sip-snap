@@ -54,12 +54,15 @@ serve(async (req) => {
       });
     }
 
-    const rawApiUrl = Deno.env.get("WAHA_API_URL") || "https://devlikeaprowaha-production-4380.up.railway.app";
-    const apiUrl = rawApiUrl.replace(/\/+$/, "");
-    const apiKey = Deno.env.get("WAHA_API_KEY");
-    const defaultChatId = "120363422396487980@g.us";
-    const envChatId = Deno.env.get("WAHA_CHAT_ID");
-    const targetChatId = chatId || (envChatId && envChatId !== "default" ? envChatId : defaultChatId);
+    const { apiUrl, apiKey, defaultChatId } = await getWahaConfig();
+    const targetChatId = chatId || defaultChatId;
+
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "WAHA API key not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "WAHA_API_KEY not configured" }), {
