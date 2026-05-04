@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { phone } = await req.json()
+    const { phone, order } = await req.json() as { phone: string; order?: OrderContext }
 
     if (!phone || phone.length < 10) {
       return new Response(
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError
 
     // Send via WhatsApp (WAHA)
-    const sendResult = await sendWhatsAppOtp(phone, otpCode)
+    const sendResult = await sendWhatsAppOtp(phone, otpCode, order)
     if (!sendResult.ok) {
       return new Response(
         JSON.stringify({ error: `Failed to send OTP via WhatsApp. ${sendResult.error || ''}`.trim() }),
