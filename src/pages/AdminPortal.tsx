@@ -60,8 +60,9 @@ const AdminPortal = () => {
               <IntervalBoostSettings />
             </TabsContent>
 
-            <TabsContent value="settings">
+            <TabsContent value="settings" className="space-y-4">
               <SystemSettings />
+              <WhatsAppSettings />
             </TabsContent>
           </Tabs>
         </motion.div>
