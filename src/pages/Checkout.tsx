@@ -49,6 +49,13 @@ const Checkout = () => {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
+  // OTP 60s expiry countdown
+  useEffect(() => {
+    if (otpExpiry <= 0) return;
+    const timer = setTimeout(() => setOtpExpiry(e => e - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [otpExpiry]);
+
   const handleSendOtp = useCallback(async () => {
     if (phoneInput.length < 10 || sendingOtp) return;
     setSendingOtp(true);
