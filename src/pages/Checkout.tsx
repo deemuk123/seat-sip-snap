@@ -24,7 +24,10 @@ const Checkout = () => {
   const [verifying, setVerifying] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
   const [otpExpiry, setOtpExpiry] = useState(0);
+  const [attemptsRemaining, setAttemptsRemaining] = useState(3);
+  const [otpLocked, setOtpLocked] = useState(false);
 
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
