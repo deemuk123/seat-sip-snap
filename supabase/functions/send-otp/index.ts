@@ -24,7 +24,7 @@ async function sendWhatsAppOtp(phone: string, otp: string): Promise<{ ok: boolea
   }
 
   const chatId = toWhatsAppChatId(phone)
-  const text = `Your Big Movies OTP is *${otp}*.\nValid for 60 seconds. Do not share this code with anyone.`
+  const text = `Your Big Movies OTP is *${otp}*.\nValid for 3 minutes. Do not share this code with anyone.`
 
   try {
     const resp = await fetch(`${apiUrl}/api/sendText`, {
