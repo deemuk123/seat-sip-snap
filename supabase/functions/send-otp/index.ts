@@ -55,14 +55,29 @@ function buildOtpMessage(otp: string, ctx?: OrderContext): string {
   return lines.join('\n')
 }
 
-async function sendWhatsAppOtp(phone: string, otp: string, ctx?: OrderContext): Promise<{ ok: boolean; error?: string }> {
-  const rawApiUrl = Deno.env.get('WAHA_API_URL') || ''
-  const apiUrl = rawApiUrl.replace(/\/+$/, '')
-  const apiKey = Deno.env.get('WAHA_API_KEY')
+async function getWahaConfig(supabase: ReturnType<typeof createClient>) {
+  let dbUrl = '', dbKey = '', dbChat = ''
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'waha_config').maybeSingle()
+    const v = (data?.value || {}) as { api_url?: string; api_key?: string; default_chat_id?: string }
+    dbUrl = v.api_url || ''
+    dbKey = v.api_key || ''
+    dbChat = v.default_chat_id || ''
+  } catch (_) {}
+  return {
+    apiUrl: (dbUrl || Deno.env.get('WAHA_API_URL') || '').replace(/\/+$/, ''),
+    apiKey: dbKey || Deno.env.get('WAHA_API_KEY') || '',
+    defaultChatId: dbChat || Deno.env.get('WAHA_CHAT_ID') || '',
+  }
+}
+
+async function sendWhatsAppOtp(phone: string, otp: string, supabase: ReturnType<typeof createClient>, ctx?: OrderContext): Promise<{ ok: boolean; error?: string }> {
+  const { apiUrl, apiKey } = await getWahaConfig(supabase)
 
   if (!apiUrl || !apiKey) {
     return { ok: false, error: 'WAHA not configured' }
   }
+
 
   const chatId = toWhatsAppChatId(phone)
   const text = buildOtpMessage(otp, ctx)
