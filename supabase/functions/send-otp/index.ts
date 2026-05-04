@@ -94,9 +94,9 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Generate 6-digit OTP, valid for 60 seconds
+    // Generate 6-digit OTP, valid for 180 seconds (3 minutes)
     const otpCode = String(Math.floor(100000 + Math.random() * 900000))
-    const expiresAt = new Date(Date.now() + 60 * 1000).toISOString()
+    const expiresAt = new Date(Date.now() + 180 * 1000).toISOString()
 
     const { error: insertError } = await supabase.from('otp_verifications').insert({
       phone,
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'OTP sent via WhatsApp', expires_in: 60 }),
+      JSON.stringify({ success: true, message: 'OTP sent via WhatsApp', expires_in: 180 }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
