@@ -112,8 +112,15 @@ Deno.serve(async (req) => {
         `See you at the movies! 🎥`;
 
       try {
-        const wahaApiUrl = (Deno.env.get("WAHA_API_URL") || "").replace(/\/+$/, "");
-        const wahaApiKey = Deno.env.get("WAHA_API_KEY") || "";
+        let dbUrl = "", dbKey = "";
+        try {
+          const { data: cfg } = await supabase.from("settings").select("value").eq("key", "waha_config").maybeSingle();
+          const v = (cfg?.value || {}) as { api_url?: string; api_key?: string };
+          dbUrl = v.api_url || "";
+          dbKey = v.api_key || "";
+        } catch (_) {}
+        const wahaApiUrl = (dbUrl || Deno.env.get("WAHA_API_URL") || "").replace(/\/+$/, "");
+        const wahaApiKey = dbKey || Deno.env.get("WAHA_API_KEY") || "";
 
         // Send to customer directly (+977 Nepal)
         const phone = order.phone.replace(/^\+977/, "").replace(/^977/, "").replace(/\D/g, "");
