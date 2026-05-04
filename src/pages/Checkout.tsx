@@ -96,7 +96,7 @@ const Checkout = () => {
   }, [phoneInput, sendingOtp, setPhone]);
 
   const handleVerifyAndOrder = async () => {
-    if (otp.length < 6) return;
+    if (otp.length < 6 || otpLocked) return;
     setVerifying(true);
     try {
       // Verify OTP
@@ -108,13 +108,22 @@ const Checkout = () => {
         if (error) throw error;
         verifyData = data;
       } catch (verifyErr: any) {
-        // Try to parse error body for user-facing message
         toast.error("OTP verification failed. Please try again.");
         setVerifying(false);
         return;
       }
 
       if (!verifyData?.verified) {
+        // Sync attempts/lock state from server response
+        if (typeof verifyData?.attempts_remaining === "number") {
+          setAttemptsRemaining(verifyData.attempts_remaining);
+        }
+        if (verifyData?.code === "locked") {
+          setOtpLocked(true);
+        }
+        if (verifyData?.code === "expired") {
+          setOtpExpiresAt(Date.now() - 1000);
+        }
         toast.error(verifyData?.error || "OTP verification failed");
         setVerifying(false);
         return;
