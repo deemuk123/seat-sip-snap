@@ -72,7 +72,17 @@ const Checkout = () => {
     setSendingOtp(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { phone: phoneInput },
+        body: {
+          phone: phoneInput,
+          order: {
+            movieName: selectedShow?.movieName,
+            showTime: selectedShow?.showTime,
+            deliveryMode: deliveryMode || undefined,
+            seatNumber: seatNumber || undefined,
+            items: cart.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
+            total: finalTotal,
+          },
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
